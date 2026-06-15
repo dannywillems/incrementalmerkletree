@@ -31,6 +31,33 @@ $k = \mathrm{popcount}(p)$, checked by `from_parts`.
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/incrementalmerkletree/src/frontier.rs#L32-L64
 ```
 
+**Figure 5.1a (what a frontier stores, $p = 6$).** Take a depth-3 tree with
+leaves $L_0 \dots L_6$ appended; $L_7$ does not exist yet. By Lemma 3.7 the
+ommer count is $\mathrm{popcount}(6) = 2$, so the frontier is
+$(6,\, L_6,\, [\,o_0, o_1\,])$ with $o_0 = H(4,5)$ at level $1$ and
+$o_1 = H(0..3)$ at level $2$. Stored nodes are marked `[S]`; everything to
+their left is collapsed into a single ommer, everything to their right is a
+future/empty node.
+
+```text
+ level 3                              root            (recomputed, not stored)
+                              ______/      \______
+ level 2          [S] o_1 = H(0..3)              H(4..7)         (not stored)
+                      /          \                /      \
+ level 1        H(0,1)        H(2,3)    [S] o_0 = H(4,5)  H(6,7)  (H(6,7) not stored)
+                 / \           / \           /   \         /   \
+ level 0      L0   L1       L2   L3       L4    L5   [S] L6     L7
+            \__________ collapsed _________/             ^       ^
+                  into o_1 = H(0..3)                  leaf      empty (future)
+```
+
+The ommers are exactly the `Source::Past` siblings on the tip leaf's path to
+the root (Definition 3.8): at level $1$ the left sibling $H(4,5) = o_0$, at
+level $2$ the left sibling $H(0..3) = o_1$; the level-0 sibling $L_7$ is
+`Source::Future` and is not stored. Each ommer summarises a whole completed
+left subtree ($o_1$ alone stands in for $L_0 \dots L_3$), which is why the
+state is $O(\mathrm{DEPTH})$ rather than $O(n)$.
+
 **Definition 5.2 (Frontier).** A `Frontier<H, DEPTH>` wraps an
 `Option<NonEmptyFrontier<H>>` and enforces the depth bound: a frontier is
 only valid while its position's root level is at most `DEPTH`. `append`
@@ -89,6 +116,32 @@ cases:
 ```rust reference title="incrementalmerkletree/src/frontier.rs"
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/incrementalmerkletree/src/frontier.rs#L88-L136
 ```
+
+**Figure 5.5a (the odd case is just a leaf inserted at the front, $p = 5$).**
+After appending $L_5$ (an odd position, hence a right child), case 1 fires:
+the prior leaf $L_4$ is its already-complete left sibling, so it becomes the
+new level-0 ommer with no hashing. The frontier is
+$(5,\, L_5,\, [\,o_0, o_1\,])$ with $o_0 = L_4$ a **raw leaf** at level $0$
+and $o_1 = H(0..3)$ at level $2$. Note $\mathrm{popcount}(5) = 2$ and the set
+bits of $5 = 0b101$ sit at levels $0$ and $2$, so there is no ommer at level
+$1$ (its sibling is `Source::Future`).
+
+```text
+ level 3                              root            (not stored)
+                              ______/      \______
+ level 2          [S] o_1 = H(0..3)              H(4..7)        (not stored)
+                      /          \                /      \
+ level 1        H(0,1)        H(2,3)         H(4,5)      H(6,7)  (not stored)
+                 / \           / \           /   \        /   \
+ level 0      L0   L1       L2   L3   [S] o_0=L4  [S] L5  empty  empty
+                                          ^         ^
+                                     stored ommer  leaf (future)
+```
+
+This is exactly the single line `self.ommers.insert(0, prior_leaf)`: the
+ommer list grows at the front, the carry loop is skipped, and `o_0` is a leaf
+rather than an internal hash. Contrast Figure 5.1a ($p = 6$, even), where the
+prior leaf had to be hashed up through the carry into `o_0 = H(4,5)`.
 
 Worked example, building `"a".."g"` (positions 0-6) with the string
 `Hashable`, then reading the tip root: the unit test

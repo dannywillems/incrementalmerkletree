@@ -17,7 +17,61 @@ becomes "the same idea, but sharded and persisted". Everything is in one
 file,
 [`bridgetree/src/lib.rs`](https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/bridgetree/src/lib.rs).
 
-## 2. Definitions
+## 2. Where bridgetree is used in the zcash stack
+
+Before studying the internals, it helps to know where this code actually
+runs. As of 2026, `bridgetree` is largely legacy in the wider Zcash
+stack: newer code maintains witnesses with `shardtree`
+([Chapter 9](./09-shardtree-structure.md)) and tracks consensus tree
+state with a bare `Frontier` ([Chapter 5](./05-frontiers.md)). Two
+distinct things share the name "bridgetree", and they show up in
+different places:
+
+1. **The standalone `bridgetree` crate** in this workspace (versions
+   0.6 / 0.7), which is what this chapter documents.
+2. **The older `incrementalmerkletree::bridgetree` module**, which lived
+   inside `incrementalmerkletree` 0.3.x before the bridge code was split
+   out into its own crate.
+
+| Consumer | Tree it uses | Notes |
+| --- | --- | --- |
+| `zcashd` (Rust glue in the `zcash` repo) | the `incrementalmerkletree::bridgetree` module (0.3 API) | `incremental_merkle_tree.rs`, `merkle_frontier.rs`, `wallet.rs`; pins `incrementalmerkletree = "0.3"`, so no standalone `bridgetree` crate is in its lockfile |
+| `zewif-zcashd` (wallet-migration tooling) | the standalone `bridgetree` crate, directly | parses the zcashd wallet on-disk format, which serialized a `BridgeTree`; see `orchard/bridgetree_parsing.rs` |
+| `wallet` (zcash-devtool migration flow) | `shardtree` + `incrementalmerkletree` 0.8 for its own trees | pulls in `bridgetree` only transitively, via the `zewif-zcashd` dependency |
+| `librustzcash`, `orchard` | `shardtree` for wallet-side witnessing | no `bridgetree` dependency |
+| `zebra` (full node) | a bare `frontier::Frontier` from `incrementalmerkletree` 0.8.2 | a consensus node only appends commitments and computes anchors, never produces per-note witnesses, so it needs neither bridges nor shards |
+
+In short, the standalone crate's only first-party direct consumer today
+is `zewif-zcashd`, and that is because it has to decode data zcashd wrote
+with an earlier version of this very code. New witness-tracking code
+reaches for `shardtree` instead; consensus-only tree state uses
+`Frontier`.
+
+## 3. bridgetree vs shardtree at a glance
+
+Both crates solve the same problem: an append-only Merkle tree that
+maintains witnesses for marked leaves, prunes everything else, and
+supports checkpoint and rollback up to a bounded count. They differ only
+in how the tree state is represented and persisted. `shardtree` is "the
+same idea, sharded and persisted"
+([Chapter 9](./09-shardtree-structure.md)).
+
+| Axis | bridgetree | shardtree |
+| --- | --- | --- |
+| In-memory shape | flat `Vec<MerkleBridge>` plus address/position maps | `Arc`-linked `Node`/`Tree`, a cap over fixed-height shards |
+| Node addressing | bridge indices into the `Vec` | `Address` `(level, index)`; children reached via `Arc` in memory |
+| Insertion | sequential append; bridges fuse and split | out-of-order insertion, batch insert, insert subtree roots |
+| Persistence | whole structure serialized; in-memory oriented | per-shard via a `ShardStore`; only the touched shard is rewritten |
+| Checkpoint / rewind | a bridge index (`bridges_len`); rewind truncates the `Vec` | a `TreeState` position plus `marks_removed`; rewind truncates by position |
+| Sharing / clone | owned `Vec` data | `Arc` structural sharing, so clone and checkpoint are cheap |
+| Scale target | modest, in-memory | depth-32 production wallets |
+| Status (2026) | largely legacy (see section 2) | current production witnessing tree |
+
+The two crates are independent: `shardtree` does not depend on
+`bridgetree`. If you only need anchors and never per-note witnesses, a
+bare `Frontier` ([Chapter 5](./05-frontiers.md)) is lighter than either.
+
+## 4. Definitions
 
 **Definition 8.1 (MerkleBridge).** A `MerkleBridge<H>` carries an optional
 `prior_position` (the frontier tip of the preceding bridge), a set of
@@ -68,9 +122,9 @@ bridges. Failure modes (`AuthBaseNotFound`, `PositionNotMarked`,
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/bridgetree/src/lib.rs#L820-L910
 ```
 
-## 3. The code
+## 5. The code
 
-### 3.1 The append / mark / checkpoint cycle
+### 5.1 The append / mark / checkpoint cycle
 
 ```rust reference title="bridgetree/src/lib.rs"
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/bridgetree/src/lib.rs#L633-L727
@@ -81,7 +135,7 @@ tracks the current leaf and records its position in `marked_indices`.
 `checkpoint` pushes a `Checkpoint` recording the bridge count; `rewind`
 pops it and truncates back.
 
-### 3.2 Garbage collection
+### 5.2 Garbage collection
 
 `garbage_collect` is what makes the structure space-efficient: it fuses
 and drops bridges that are no longer needed to witness any marked leaf or
@@ -92,7 +146,7 @@ ever-growing bridge list back into a compact one.
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/bridgetree/src/lib.rs#L911-L995
 ```
 
-### 3.3 Implementing the comparison trait
+### 5.3 Implementing the comparison trait
 
 `BridgeTree` implements the `incrementalmerkletree-testing` `Tree<H,
 usize>` trait, which is how it gets differentially tested against the
@@ -102,7 +156,7 @@ reference tree (see [Chapter 14](./14-testing-framework.md)).
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/bridgetree/src/lib.rs#L996-L1000
 ```
 
-## 4. Failure modes
+## 6. Failure modes
 
 - **Witnessing an unmarked position.** `witness` returns
   `WitnessingError::PositionNotMarked` if you never called `mark` at that
@@ -122,7 +176,7 @@ https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831
   collection happens; it is a manual hygiene call. No automated test in
   this workspace; caught by review only.
 
-## 5. Spec pointers
+## 7. Spec pointers
 
 - [Zcash Protocol Specification](https://zips.z.cash/protocol/protocol.pdf),
   Section 3.8: the wallet must maintain spend authorisation witnesses for
@@ -130,7 +184,7 @@ https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831
   between two such states. Cited because `mark`/`witness` implement
   exactly the wallet's witness-maintenance requirement.
 
-## 6. Exercises
+## 8. Exercises
 
 1. **Answer from code.** What does `BridgeTree::mark` return when called
    twice at the same position without an intervening append, and why?
@@ -155,7 +209,7 @@ https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831
 - Exercise 3: `compute_root_from_witness` lives in the testing crate at
   `incrementalmerkletree-testing/src/lib.rs:362`.
 
-## 7. Further reading
+## 9. Further reading
 
 - [Chapter 9: shardtree Structure](./09-shardtree-structure.md) introduces
   the sharded tree; compare its per-shard frontier handling with

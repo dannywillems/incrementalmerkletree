@@ -75,6 +75,32 @@ The store module documents the layout directly:
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/shardtree/src/store.rs#L1-L23
 ```
 
+Why split the tree this way? A depth-32 tree has $2^{32}$ leaf positions,
+which cannot be held in memory or rewritten on every append. Sharding
+makes a tree of that size storable and updatable:
+
+- **Storage locality.** Shards are stored and loaded individually
+  (`ShardStore::get_shard` / `put_shard` / `last_shard`). An append
+  touches only the rightmost shard; completed shards to its left are
+  never rewritten.
+- **Per-shard pruning.** Each shard is a `PrunableTree`, so once a region
+  is fully scanned its interior collapses to a single retained root hash,
+  which becomes the leaf the cap holds for that shard.
+- **Cheap witness advancement.** Because completed shards collapse to
+  their roots, moving a witness across a large gap needs only the roots of
+  the complete shards between the marked leaf and the frontier, plus the
+  path inside the shard that holds the marked leaf, rather than every
+  intermediate leaf. The module header states this directly.
+
+```rust reference title="shardtree/src/lib.rs"
+https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/shardtree/src/lib.rs#L1-L21
+```
+
+The cap-versus-shard cut line at level `SHARD_HEIGHT` is also where root
+computation changes strategy: walking the cap answers from cached shard
+roots, while reaching the cut delegates to shard data via
+`root_from_shards` ([Chapter 11](./11-shardtree-operations.md)).
+
 ## 3. The code: locating and decomposing
 
 `value_at_position` walks from the root address into the correct child by

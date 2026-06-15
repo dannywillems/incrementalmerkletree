@@ -73,7 +73,45 @@ of the fully-materialised tree, that a maintained witness still
 authenticates after appends, and that a rollback restores exactly the
 prior observable state.
 
-## 2. Notation
+## 2. Why wallets need this
+
+These structures exist to serve **wallets**, which have a narrow but
+awkward requirement. To spend a shielded note, a wallet must present an
+authentication path (a "witness") for that note's commitment against the
+current tree root (the "anchor"). The note sits at one **position** in a
+note-commitment tree that every participant shares and that grows by one
+leaf for every shielded output on the chain, potentially billions of
+them, almost all belonging to other people.
+
+Two naive strategies both fail at that scale:
+
+- **Recompute each witness from zero.** Rebuilding a witness on demand
+  means re-reading the whole commitment tree, every leaf ever appended,
+  on each update. The cost then grows with the chain, not with the
+  wallet.
+- **Remember the entire tree.** Storing every commitment so a witness can
+  be produced later wastes space on the overwhelming majority of leaves
+  the wallet has no interest in.
+
+The structures in this workspace take a third path. A wallet **marks**
+only the few positions it cares about and keeps just enough sibling data
+to authenticate them. As the chain appends new, independent commitments,
+each marked position's witness is **advanced incrementally**, computed on
+the fly from the new leaves rather than reconstructed from scratch. The
+marked positions together with their partial witness state are the thing
+that must be persisted as the chain evolves: in memory as a chain of
+bridges in `bridgetree` ([Chapter 8](./08-bridgetree.md)), or as pruned,
+storage-backed shards in `shardtree`
+([Chapter 9](./09-shardtree-structure.md) onward). The rest of the tree,
+between the marked positions, can be summarised by a frontier
+([Chapter 5](./05-frontiers.md)) and otherwise discarded.
+
+This is why the crates optimise for "append a leaf, optionally mark it,
+cheaply update the witnesses of previously marked leaves, and checkpoint
+so a reorg can roll back", rather than for random access to an arbitrary
+historical tree.
+
+## 3. Notation
 
 Fixed for the whole course. Each symbol maps to a type in
 `incrementalmerkletree/src/lib.rs`.
@@ -104,7 +142,7 @@ examples, in the module docstring:
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/incrementalmerkletree/src/lib.rs#L1-L44
 ```
 
-## 3. Invariants and the tests that guard them
+## 4. Invariants and the tests that guard them
 
 This is the data-structure analogue of a threat-model table: each row is
 a load-bearing invariant, what breaks it, where it is enforced, and the
@@ -126,7 +164,7 @@ that every observable (root, witness, marked positions) is identical
 after every random operation. Most structural bugs in this workspace are
 caught there first.
 
-## 4. How to read this course
+## 5. How to read this course
 
 - **Part I (Chapters 1-2):** the workspace map and the build/test/
   contribution loop. Read these first and return to them often.

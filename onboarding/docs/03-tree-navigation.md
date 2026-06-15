@@ -60,6 +60,31 @@ $$
 and $a$ is a right child iff $i \wedge 1 = 1$. These are exactly the bit
 operations in `parent`, `sibling`, `children`, and `is_right_child`.
 
+**Figure 3.4a (an `Address` is a level-relative coordinate, not a leaf
+count).** The index counts nodes *at the address's own level*, so the same
+horizontal location carries a different index at each level. Leaf $8$ is
+$(0, 8)$; its parent is $(1,\, 8 \gg 1) = (1, 4)$. So $(0, 8)$ is a child of
+$(1, 4)$ even though $8 \ne 4$. This is not an inconsistency: at level $1$
+there is one node per two leaves, so indices halve as you climb.
+
+```text
+ level 2                 (2,2) = H(8..11)
+                        /                \
+ level 1        (1,4) = H(8,9)      (1,5) = H(10,11)
+                /        \
+ level 0     (0,8)      (0,9)     <- index counts level-0 nodes from the left
+              ^
+          leaf 8;  parent = (1, 8 >> 1) = (1,4)
+```
+
+Definition 3.3 says an address denotes a subtree "counting from the left ...
+in a binary tree of arbitrary height": an `Address` is a coordinate in an
+*unbounded* tree and carries no notion of tree size. Both $(0,8)$ and $(1,4)$
+exist in any tree of depth $\ge 4$, and `parent`/`sibling`/`next_at_level` may
+legitimately name nodes above or beyond a given root. The size-bearing types
+are separate: a `Position` together with `DEPTH` ([Chapter 5](./05-frontiers.md))
+fixes a concrete tree, while the bare `Address` stays a pure coordinate.
+
 **Definition 3.5 (position range of an address).** The leaf positions
 spanned by $a = (\ell, i)$ are the half-open interval
 

@@ -57,6 +57,40 @@ enum onto the flags.
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/shardtree/src/prunable.rs#L17-L42
 ```
 
+Each flag pins a leaf against pruning in a different way:
+
+| Flag | Bit | Prunable when |
+| --- | --- | --- |
+| `EPHEMERAL` | `0b000` | its sibling is also prunable and it is not part of a witness for a checkpoint or marked leaf |
+| `CHECKPOINT` | `0b001` | more than `max_checkpoints` later checkpoint leaves exist, unless also `MARKED` |
+| `MARKED` | `0b010` | only on an explicit unmark (delete) |
+| `REFERENCE` | `0b100` | the `REFERENCE` flag is removed, which happens when the leaf is overwritten without it |
+
+`EPHEMERAL` is the absence of bits, not a bit of its own. `CHECKPOINT`
+only marks a position as a rewind boundary; the checkpoint id itself lives
+in the store's checkpoint registry (Definition 6.5), not on the leaf.
+`REFERENCE` is asymmetric: it cannot be added to an existing leaf, only
+set at insertion, and is for externally supplied nodes (for example
+subtree roots inserted by `zcash_client_sqlite`) that must be kept until
+real data supersedes them.
+
+Because the encoding is a bitset, the `From<&Retention<C>>` conversion can
+set more than one bit, and a `Checkpoint` leaf's residual flags depend on
+its `Marking` (Definition 6.2):
+
+| `Retention<C>` | `RetentionFlags` |
+| --- | --- |
+| `Ephemeral` | `EPHEMERAL` (`0`) |
+| `Checkpoint { marking: None }` | `CHECKPOINT` (`1`) |
+| `Checkpoint { marking: Marked }` | `CHECKPOINT \| MARKED` (`3`) |
+| `Checkpoint { marking: Reference }` | `CHECKPOINT \| REFERENCE` (`5`) |
+| `Marked` | `MARKED` (`2`) |
+| `Reference` | `REFERENCE` (`4`) |
+
+The common wallet leaf is `CHECKPOINT | MARKED`: a block boundary at which
+one of the wallet's own notes landed, so the position is both a rewind
+anchor and permanently witnessed.
+
 **Invariant 6.4 (prunability).** A leaf is prunable iff it carries none of
 `CHECKPOINT`, `MARKED`, `REFERENCE`, and its sibling is also prunable.
 This is the predicate the merge logic in
@@ -72,6 +106,20 @@ store can seek to "checkpoint depth $d$" meaning the $d$-th most recent.
 ```rust reference title="shardtree/src/store.rs"
 https://github.com/zcash/incrementalmerkletree/blob/edf24f2b2e727776e290f292d831d4ac61c3e1bd/shardtree/src/store.rs#L257-L320
 ```
+
+A `shardtree` checkpoint is a lightweight *rewind anchor*, not a snapshot.
+It stores only a `TreeState` (a position, or `Empty`) and the
+`marks_removed` delta, so rewinding means truncating everything appended
+after that position rather than restoring a saved copy.
+`ShardTree::checkpoint(id)` tags the current rightmost leaf with the
+`CHECKPOINT` flag and registers the checkpoint;
+`ShardTree::truncate_to_checkpoint` (and its `_depth` variant) is the
+rewind. History is bounded: `ShardTree` carries a `max_checkpoints`, and
+`prune_excess_checkpoints` drops the oldest once that limit is exceeded,
+using each dropped checkpoint's `marks_removed` to clear the
+corresponding `MARKED` flags. The `id` is generic (`Clone + Debug + Ord`);
+in the wallet it is a block height, with one checkpoint per scanned block,
+so a chain reorg rewinds the tree to the last valid block.
 
 **Definition 6.6 (Checkpoint, bridgetree).** `bridgetree`'s `Checkpoint<C>`
 instead records the number of bridges at checkpoint time
