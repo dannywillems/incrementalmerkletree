@@ -34,4 +34,11 @@ theorem root_new_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) 
     (NonEmptyFrontier.new leaf).root depth = merkleRoot depth [leaf] := by
   rw [NonEmptyFrontier.root_new, spineRoot_eq_merkleRoot]
 
+/-- P2.3 (base case), lifted to the depth-bounded `Frontier`: a single-leaf
+    frontier computes the reference Merkle root of its one-element leaf list. -/
+theorem Frontier.singleton_root_eq_merkleRoot {H : Type} [Hashable H]
+    (leaf : H) (depth : Nat) :
+    (Frontier.singleton leaf : Frontier H depth).root = merkleRoot depth [leaf] := by
+  rw [Frontier.singleton_root, root_new_eq_merkleRoot]
+
 end Imt
