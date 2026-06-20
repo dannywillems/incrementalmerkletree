@@ -53,4 +53,52 @@ theorem root_two_eq_merkleRoot {H : Type} [Hashable H] (a b : H) (d : Nat) :
   rw [hmr]
   congr 1
 
+namespace NonEmptyFrontier
+
+/-- Build the frontier representing the leaf list `v0 :: vs` by folding `append`
+    over `vs` starting from the single-leaf frontier `new v0`. This is the
+    abstraction function from a non-empty leaf list to its frontier summary.
+
+    ```text
+    ofList v0 [a, b, c] = (((new v0).append a).append b).append c
+    represents leaves:     [v0, a, b, c]
+    ```
+-/
+def ofList {H : Type} [Hashable H] (v0 : H) (vs : List H) : NonEmptyFrontier H :=
+  vs.foldl (fun f x => f.append x) (new v0)
+
+/-- Each appended leaf advances the position by one. -/
+theorem foldl_append_position {H : Type} [Hashable H]
+    (f0 : NonEmptyFrontier H) (vs : List H) :
+    (vs.foldl (fun f x => f.append x) f0).position.val
+      = f0.position.val + (vs.length : BitVec 64) := by
+  induction vs generalizing f0 with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.foldl_cons, ih, append_position, List.length_cons]
+    push_cast
+    ring
+
+/-- The current leaf of a fold of appends is the last appended leaf (or the seed
+    when nothing was appended). -/
+theorem foldl_append_leaf {H : Type} [Hashable H]
+    (f0 : NonEmptyFrontier H) (vs : List H) :
+    (vs.foldl (fun f x => f.append x) f0).leaf = vs.getLastD f0.leaf := by
+  induction vs generalizing f0 with
+  | nil => simp
+  | cons x xs ih => simp only [List.foldl_cons, ih, append_leaf, List.getLastD_cons]
+
+/-- P2.1 (abstraction): `ofList v0 vs` sits at position `vs.length`, i.e. it
+    represents the `vs.length + 1` leaves `v0 :: vs`. -/
+@[simp] theorem ofList_position {H : Type} [Hashable H] (v0 : H) (vs : List H) :
+    (ofList v0 vs).position.val = (vs.length : BitVec 64) := by
+  simp [ofList, foldl_append_position, new]
+
+/-- `ofList v0 vs` carries the last of `v0 :: vs` as its current leaf. -/
+@[simp] theorem ofList_leaf {H : Type} [Hashable H] (v0 : H) (vs : List H) :
+    (ofList v0 vs).leaf = vs.getLastD v0 := by
+  simp [ofList, foldl_append_leaf, new]
+
+end NonEmptyFrontier
+
 end Imt
