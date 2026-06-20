@@ -213,6 +213,27 @@ theorem contains_antisymm {a b : Address}
       obtain ⟨hba, _⟩ := hba
       omega
 
+/-- The address above a position contains that position's leaf: the level-`l`
+    subtree root over `p` is an ancestor (or, at level 0, equal).
+
+    ```text
+        abovePosition l p = (l, p >> l)
+                  | contains
+        leaf addr        = (0, p)
+    ```
+-/
+theorem abovePosition_contains_leaf (l : Level) (p : Position) :
+    (abovePosition l p).contains (abovePosition 0 p) = true := by
+  simp only [contains, abovePosition, isAncestorOf, Bool.or_eq_true, beq_iff_eq,
+    Bool.and_eq_true, decide_eq_true_eq]
+  by_cases h : l.toNat = 0
+  · left
+    have hl : l = 0 := by apply BitVec.eq_of_toNat_eq; simp [h]
+    subst hl; simp
+  · right
+    have h0 : (0 : Level).toNat = 0 := rfl
+    exact ⟨by omega, by simp⟩
+
 end Address
 
 /-! ## Oracle checks (mirror the Rust unit tests)
