@@ -28,13 +28,29 @@ Each layer is "done" when its root-correctness theorem is proved with no
 
 - **Ommer characterization / tight-level case** (blocks P2.3): the frontier's
   ommers are the complete-left-subtree roots of the represented leaves. The
-  depth-padding half is now DONE: `NonEmptyFrontier.root_merkleRoot_lift` lifts
-  a match at any level `k` (with `L.length <= 2^k`) to every higher level, so
-  P2.3 reduces to the single tight-level obligation
-  `(ofList v0 vs).root k = merkleRoot k (v0 :: vs)` at the tight `k` (where
-  `2^k >= L.length`). `getLsbD_eq_false_of_lt` discharges the `hbits` side
-  condition for `ofList`. THIS tight-level equality is the one remaining hard
-  leaf for P2.3.
+  depth-padding half is DONE (`root_merkleRoot_lift` + `getLsbD_eq_false_of_lt`),
+  so P2.3 reduces to the tight-level obligation
+  `(ofList v0 vs).root k = merkleRoot k (v0 :: vs)`.
+
+  ALL level-step infrastructure is now in place (committed, no sorry):
+  - fold state: `rootState`, `rootState_zero`, `rootState_succ`,
+    `root_eq_rootState_fst`, `root_succ_split`, `root_succ_of_clear`.
+  - merkleRoot step: `merkleRoot_succ`, `merkleRoot_succ_of_le`.
+  - index arithmetic: `baseIndex` (+ `_zero`/`_succ`/`_le`/`_add_pow`),
+    `mod_two_pow_succ`, `ite_getLsbD_eq_div_mod`,
+    `length_drop_baseIndex(_le)`.
+
+  REMAINING (the final assembly, two inductions):
+  - (B) Joint invariant by induction on the level `j`:
+    `rootState f j = (merkleRoot j (L.drop (baseIndex (n-1) j)), OMM j)` where
+    `OMM j` is the remaining left-sibling roots for set bits >= j. Clear-bit
+    step uses `merkleRoot_succ_of_le` + `root_succ_of_clear`; set-bit step uses
+    `merkleRoot_succ` + `rootState_succ` + `baseIndex_add_pow`, and needs the
+    consumed ommer value (from A). At the tight level `OMM = []` and the .1 is
+    `merkleRoot k L`, giving the tight obligation.
+  - (A) Ommer-value characterization: `(ofList v0 vs).ommers = OMM 0` (the
+    left-sibling roots), by induction on `vs` via `ofList_append`/the carry.
+    This supplies the consumed-ommer values that (B)'s set-bit step needs.
 - **Carry-popcount** (blocks P2.1 odd case): `carryRun a 0 ommers
   = trailingOnes a` (under the WF length bound) and `popcount (a+1)
   = popcount a + 1 - trailingOnes a` (with `a + 1 != 0`, the wraparound
