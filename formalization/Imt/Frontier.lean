@@ -65,32 +65,41 @@ def root [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) : H :=
         (Hashable.combine i st.1 (emptyRoot i), st.2))
     (f.leaf, f.ommers)).1
 
+/-- If every level in `L` has a clear position bit, the root fold over `L`
+    ignores the ommers and reduces to the plain empty-sibling spine fold. The
+    reusable "clear-bit spine" core of the root computation (used both for a
+    fresh frontier and, in the inductive step, for the cleared high bits above
+    the complete left part). -/
+theorem foldl_clear [Hashable H] (pos : BitVec 64) :
+    ∀ (L : List Nat) (a : H) (oms : List H), (∀ i ∈ L, pos.getLsbD i = false) →
+      (L.foldl
+        (fun (st : H × List H) (i : Nat) =>
+          if pos.getLsbD i then
+            (match st.2 with
+              | [] => st
+              | o :: rest => (Hashable.combine i o st.1, rest))
+          else (Hashable.combine i st.1 (emptyRoot i), st.2))
+        (a, oms)).1
+      = L.foldl (fun acc i => Hashable.combine i acc (emptyRoot i)) a := by
+  intro L
+  induction L with
+  | nil => intro a oms _; rfl
+  | cons x xs ih =>
+    intro a oms h
+    simp only [List.foldl_cons]
+    have hx : pos.getLsbD x = false := h x (by simp)
+    split
+    · rename_i hcond; rw [hx] at hcond; simp at hcond
+    · exact ih (Hashable.combine x a (emptyRoot x)) oms
+        (fun i hi => h i (List.mem_cons_of_mem _ hi))
+
 /-- The root of a freshly constructed frontier is the left spine of its leaf:
     with no ommers and position 0, every level pairs the digest with an empty
     subtree on the right. -/
 theorem root_new [Hashable H] (leaf : H) (depth : Nat) :
     (new leaf).root depth = spineRoot leaf depth := by
   simp only [root, spineRoot, new]
-  -- the position is 0, so every bit is clear and the ommer list stays empty
-  suffices h : ∀ (L : List Nat) (a : H),
-      (L.foldl
-        (fun (st : H × List H) (i : Nat) =>
-          if (0 : BitVec 64).getLsbD i then
-            (match st.2 with
-              | [] => st
-              | o :: rest => (Hashable.combine i o st.1, rest))
-          else (Hashable.combine i st.1 (emptyRoot i), st.2))
-        (a, ([] : List H))).1
-      = L.foldl (fun acc i => Hashable.combine i acc (emptyRoot i)) a from h _ _
-  intro L
-  induction L with
-  | nil => intro a; rfl
-  | cons x xs ih =>
-    intro a
-    simp only [List.foldl_cons]
-    split
-    · rename_i h; simp at h
-    · exact ih _
+  exact foldl_clear 0 (List.range depth) leaf [] (fun i _ => by simp)
 
 end NonEmptyFrontier
 
