@@ -249,6 +249,30 @@ theorem appendCarry_ne_nil [Hashable H] (p : BitVec 64) (level : Nat) (carry : H
     · simp only [hb, if_true]; exact ih _ _
     · simp [hb]
 
+/-- The single merged ommer that `appendCarry` deposits at the carry-stop level:
+    the carry combined up through each consumed (set-bit) ommer. Used by: the (A)
+    ommer-value characterization (its merkleRoot value is the new left subtree). -/
+def mergedCarry [Hashable H] (p : BitVec 64) (level : Nat) (carry : H) : List H → H
+  | [] => carry
+  | o :: rest =>
+    if p.getLsbD level then mergedCarry p (level + 1) (Hashable.combine level o carry) rest
+    else carry
+
+/-- Structural form of the carry: it consumes the `carryRun` set-bit prefix of the
+    ommers and emits a single merged ommer in front of the untouched tail. Used
+    by: the (A) ommer-value characterization. -/
+theorem appendCarry_eq [Hashable H] (p : BitVec 64) (level : Nat)
+    (carry : H) (ommers : List H) :
+    appendCarry p level carry ommers
+      = mergedCarry p level carry ommers :: ommers.drop (carryRun p level ommers) := by
+  induction ommers generalizing level carry with
+  | nil => simp [appendCarry, mergedCarry, carryRun]
+  | cons o rest ih =>
+    rw [appendCarry, mergedCarry, carryRun]
+    by_cases hb : p.getLsbD level
+    · simp only [hb, if_true]; rw [ih, List.drop_succ_cons]
+    · simp [hb]
+
 /-- Rust `NonEmptyFrontier::append`: extend the frontier with leaf `v`. If the
     old position is even (new position a right child) the old leaf becomes a
     level-0 ommer; otherwise (old position odd) the old leaf is carried up,
