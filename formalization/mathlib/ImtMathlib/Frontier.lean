@@ -29,6 +29,10 @@ theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat)
       List.take_of_length_le (by simpa using h1),
       List.drop_eq_nil_of_le (by simpa using h1), merkleRoot_nil]
 
+/-- The depth-`d` root of a single leaf is its empty-sibling spine. -/
+theorem merkleRoot_singleton {H : Type} [Hashable H] (a : H) (d : Nat) :
+    merkleRoot d [a] = spineRoot a d := (spineRoot_eq_merkleRoot a d).symm
+
 /-- P2.3 (base case): a freshly constructed single-leaf frontier computes the
     reference Merkle root of its one-element leaf list. -/
 theorem root_new_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
