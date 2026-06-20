@@ -377,6 +377,21 @@ theorem rootState_succ [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) :
   rw [List.range_succ, List.foldl_append]
   rfl
 
+/-- Clear-bit step for the remaining ommers: a clear position bit consumes no
+    ommer. Used by: the `.2` bookkeeping of the P2.3 ommer characterization. -/
+theorem rootState_snd_succ_clear [Hashable H] (f : NonEmptyFrontier H) (j : Nat)
+    (h : f.position.val.getLsbD j = false) :
+    (rootState f (j + 1)).2 = (rootState f j).2 := by
+  rw [rootState_succ]; simp [h]
+
+/-- Set-bit step for the remaining ommers: a set position bit consumes the head
+    ommer. Used by: the `.2` bookkeeping of the P2.3 ommer characterization. -/
+theorem rootState_snd_succ_set [Hashable H] (f : NonEmptyFrontier H) (j : Nat)
+    (o : H) (rest : List H) (h : f.position.val.getLsbD j = true)
+    (hommers : (rootState f j).2 = o :: rest) :
+    (rootState f (j + 1)).2 = rest := by
+  rw [rootState_succ]; simp [h, hommers]
+
 /-- P2.1 (even case): appending to a frontier at an even position preserves
     well-formedness. The old leaf becomes a new level-0 ommer (length +1) and the
     population count of the position rises by one (`popcount_succ_of_even`). -/
