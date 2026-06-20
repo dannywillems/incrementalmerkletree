@@ -58,6 +58,16 @@ theorem popcount_allOnes (w : Nat) : popcount (BitVec.allOnes w) = w := by
     simp only [List.mem_range] at hi
     simp [hi]
 
+/-- `getLsbD` is `Nat.testBit` of the underlying value (definitional bridge to
+    Mathlib's `Nat` bit theory). -/
+theorem getLsbD_eq_testBit {w : Nat} (p : BitVec w) (i : Nat) :
+    p.getLsbD i = p.toNat.testBit i := rfl
+
+/-- `popcount` of a 64-bit vector counts the set `testBit`s over the width. -/
+theorem popcount_eq_countP_testBit (p : BitVec 64) :
+    popcount p = (List.range 64).countP (fun i => p.toNat.testBit i) := by
+  unfold popcount; rfl
+
 namespace Address
 
 /-- Rust `Address::parent`: `(level + 1, index >> 1)`. -/
