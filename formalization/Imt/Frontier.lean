@@ -290,6 +290,20 @@ theorem append_ommers_ne_nil [Hashable H] (f : NonEmptyFrontier H) (v : H) :
   · exact appendCarry_ne_nil _ _ _ _
   · simp
 
+/-- Even position: `append` prepends the old leaf as the new level-0 ommer (it is
+    the new leaf's left sibling). Used by: the (A) ommer-value characterization. -/
+theorem append_ommers_even [Hashable H] (f : NonEmptyFrontier H) (v : H)
+    (h : f.position.val.getLsbD 0 = false) :
+    (f.append v).ommers = f.leaf :: f.ommers := by
+  unfold append; split <;> simp_all
+
+/-- Odd position: `append` runs the carry over the existing ommers, merging the
+    completed left subtrees. Used by: the (A) ommer-value characterization. -/
+theorem append_ommers_odd [Hashable H] (f : NonEmptyFrontier H) (v : H)
+    (h : f.position.val.getLsbD 0 = true) :
+    (f.append v).ommers = appendCarry f.position.val 0 f.leaf f.ommers := by
+  unfold append; split <;> simp_all
+
 /-- If the position bit at `depth` is clear, extending the root computation by one
     level just wraps the current root with an empty subtree on the right. The
     frontier analog of the merkleRoot spine recurrence; it removes depth-padding
