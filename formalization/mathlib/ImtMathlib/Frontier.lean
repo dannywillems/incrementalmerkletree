@@ -11,6 +11,48 @@ import Mathlib
 
 namespace Imt
 
+/-! ### Arithmetic foundations for the P2.3 ommer characterization
+
+`baseIndex m j` is the start index of the level-`j` subtree containing leaf `m`
+(`m` rounded down to a multiple of `2 ^ j`); its recurrence drives the level
+induction of the characterization. -/
+
+/-- Peeling the next power-of-two modulus: bit `j` contributes `2 ^ j` exactly
+    when it is set. The arithmetic backbone of `baseIndex_succ`. Used by: the
+    P2.3 ommer characterization. -/
+theorem mod_two_pow_succ (m j : Nat) :
+    m % 2 ^ (j + 1) = m % 2 ^ j + 2 ^ j * (m / 2 ^ j % 2) := by
+  rw [pow_succ, Nat.mod_mul]
+
+/-- A position bit as a `0/1` value equals `toNat / 2 ^ j % 2`, bridging the
+    fold's `getLsbD` test to the base-index arithmetic. Used by: the P2.3 ommer
+    characterization. -/
+theorem ite_getLsbD_eq_div_mod (p : BitVec 64) (j : Nat) :
+    (if p.getLsbD j then (1 : Nat) else 0) = p.toNat / 2 ^ j % 2 := by
+  rw [getLsbD_eq_testBit]
+  rcases Nat.mod_two_eq_zero_or_one (p.toNat / 2 ^ j) with h | h <;>
+    simp [Nat.testBit, Nat.shiftRight_eq_div_pow, h]
+
+/-- Start index of the level-`j` subtree containing leaf `m`: `m` rounded down to
+    a multiple of `2 ^ j`. Used by: the P2.3 ommer characterization invariant
+    (the current subtree is `L.drop (baseIndex (n-1) j)`). -/
+def baseIndex (m j : Nat) : Nat := m - m % 2 ^ j
+
+/-- The level-0 subtree starts at the leaf itself. -/
+theorem baseIndex_zero (m : Nat) : baseIndex m 0 = m := by
+  simp [baseIndex, Nat.mod_one]
+
+/-- Going up one level moves the subtree start down by `2 ^ j` exactly when bit
+    `j` is set (the complete left sibling joins). Used by: the inductive step of
+    the ommer characterization. -/
+theorem baseIndex_succ (m j : Nat) :
+    baseIndex m (j + 1) = baseIndex m j - 2 ^ j * (m / 2 ^ j % 2) := by
+  unfold baseIndex
+  have h2 : m % 2 ^ (j + 1) ≤ m := Nat.mod_le _ _
+  have h1 : m % 2 ^ j ≤ m := Nat.mod_le _ _
+  rw [mod_two_pow_succ]
+  omega
+
 /-- The left spine of a single leaf is exactly the reference Merkle root of the
     one-element leaf list. -/
 theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
