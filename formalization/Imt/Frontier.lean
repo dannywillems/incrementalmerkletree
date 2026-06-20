@@ -311,6 +311,36 @@ theorem root_succ_of_clear [Hashable H] (f : NonEmptyFrontier H) (depth : Nat)
   simp only [NonEmptyFrontier.root, List.range_succ, List.foldl_append, List.foldl_cons,
     List.foldl_nil, h, Bool.false_eq_true, if_false]
 
+/-- Decomposition of `root (depth+1)` exposing the fold state after `depth`
+    levels: the root is the running digest `st`, then one more level-`depth`
+    step. A set bit consumes the next ommer as the left sibling; a clear bit
+    pairs with `emptyRoot depth` on the right. Used by: the set-bit (Case B) step
+    of the P2.3 root theorem, where the consumed ommer must be identified as the
+    complete left-subtree root. Generalizes `root_succ_of_clear` to both bits. -/
+theorem root_succ_split [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) :
+    f.root (depth + 1) =
+      (let st := (List.range depth).foldl
+        (fun (st : H × List H) (i : Nat) =>
+          if f.position.val.getLsbD i then
+            (match st.2 with | [] => st | o :: rest => (Hashable.combine i o st.1, rest))
+          else (Hashable.combine i st.1 (emptyRoot i), st.2))
+        (f.leaf, f.ommers);
+       if f.position.val.getLsbD depth then
+         (match st.2 with | [] => st.1 | o :: _ => Hashable.combine depth o st.1)
+       else Hashable.combine depth st.1 (emptyRoot depth)) := by
+  unfold root
+  rw [List.range_succ, List.foldl_append]
+  simp only [List.foldl_cons, List.foldl_nil]
+  generalize (List.foldl
+        (fun (st : H × List H) (i : Nat) =>
+          if f.position.val.getLsbD i then
+            (match st.2 with | [] => st | o :: rest => (Hashable.combine i o st.1, rest))
+          else (Hashable.combine i st.1 (emptyRoot i), st.2))
+        (f.leaf, f.ommers) (List.range depth)) = st
+  obtain ⟨a, oms⟩ := st
+  by_cases h : f.position.val.getLsbD depth <;> simp only [h, if_true] <;>
+    cases oms <;> rfl
+
 /-- P2.1 (even case): appending to a frontier at an even position preserves
     well-formedness. The old leaf becomes a new level-0 ommer (length +1) and the
     population count of the position rises by one (`popcount_succ_of_even`). -/
