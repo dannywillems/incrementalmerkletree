@@ -35,6 +35,20 @@ structure Address where
 def popcount {w : Nat} (x : BitVec w) : Nat :=
   (List.range w).countP (fun i => x.getLsbD i)
 
+/-- Incrementing an even value sets bit 0 and leaves the higher bits unchanged,
+    so the population count goes up by exactly one. The base case of the
+    popcount-under-increment reasoning the frontier well-formedness needs. -/
+theorem popcount_succ_of_even (p : BitVec 64) (h : p.getLsbD 0 = false) :
+    popcount (p + 1) = popcount p + 1 := by
+  have hp1 : p + 1 = p ||| 1 := by bv_decide
+  have hfun : (fun i => (p ||| 1).getLsbD i) ∘ Nat.succ
+      = (fun i => p.getLsbD i) ∘ Nat.succ := by
+    funext j; simp [BitVec.getLsbD_or, BitVec.getLsbD_one]
+  have h0 : (p ||| 1).getLsbD 0 = true := by simp
+  rw [hp1, popcount, popcount, List.range_succ_eq_map]
+  simp only [List.countP_cons, List.countP_map, hfun, h0, h]
+  simp
+
 namespace Address
 
 /-- Rust `Address::parent`: `(level + 1, index >> 1)`. -/
