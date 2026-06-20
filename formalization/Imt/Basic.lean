@@ -65,6 +65,23 @@ def children (a : Address) : Option (Address × Address) :=
       ( { level := a.level - 1, index := a.index <<< (1 : Nat) },
         { level := a.level - 1, index := (a.index <<< (1 : Nat)) + 1 } )
 
+/-- Rust `Address::is_ancestor_of`: `self` is strictly higher than `addr` and
+    `addr`'s index, shifted down by the level gap, lands on `self`'s index.
+
+    ```text
+    self = (l_s, i_s) is an ancestor of addr = (l_a, i_a)  iff
+        l_a < l_s   AND   (i_a >> (l_s - l_a)) == i_s
+    i.e. addr sits in the subtree rooted at self.
+    ```
+-/
+def isAncestorOf (self addr : Address) : Bool :=
+  decide (addr.level.toNat < self.level.toNat) &&
+    (addr.index >>> (self.level.toNat - addr.level.toNat) == self.index)
+
+/-- Rust `Address::contains`: ancestor-or-equal (the reflexive closure). -/
+def contains (self addr : Address) : Bool :=
+  self == addr || self.isAncestorOf addr
+
 end Address
 
 namespace Position
@@ -145,6 +162,27 @@ theorem isCompleteSubtree_iff (p : Position) (l : Level) :
   simp [isCompleteSubtree, List.all_eq_true, List.mem_range]
 
 end Position
+
+namespace Address
+
+/-- P0.6: `contains` is reflexive (every address contains itself). -/
+@[simp] theorem contains_refl (a : Address) : a.contains a = true := by
+  simp [contains]
+
+/-- P0.6: `is_ancestor_of` is transitive: ancestry composes by adding the level
+    gaps and the index shifts. -/
+theorem isAncestorOf_trans {a b c : Address}
+    (hab : a.isAncestorOf b = true) (hbc : b.isAncestorOf c = true) :
+    a.isAncestorOf c = true := by
+  simp only [isAncestorOf, Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at hab hbc ⊢
+  obtain ⟨hlab, hiab⟩ := hab
+  obtain ⟨hlbc, hibc⟩ := hbc
+  refine ⟨by omega, ?_⟩
+  rw [show a.level.toNat - c.level.toNat
+        = (b.level.toNat - c.level.toNat) + (a.level.toNat - b.level.toNat) from by omega,
+    BitVec.shiftRight_add, hibc, hiab]
+
+end Address
 
 /-! ## Oracle checks (mirror the Rust unit tests)
 
