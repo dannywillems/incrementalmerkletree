@@ -67,6 +67,14 @@ namespace NonEmptyFrontier
 def ofList {H : Type} [Hashable H] (v0 : H) (vs : List H) : NonEmptyFrontier H :=
   vs.foldl (fun f x => f.append x) (new v0)
 
+@[simp] theorem ofList_nil {H : Type} [Hashable H] (v0 : H) : ofList v0 [] = new v0 := rfl
+
+/-- The snoc step for induction: building from `vs ++ [w]` is one `append` onto
+    the frontier built from `vs`. -/
+theorem ofList_append {H : Type} [Hashable H] (v0 w : H) (vs : List H) :
+    ofList v0 (vs ++ [w]) = (ofList v0 vs).append w := by
+  simp [ofList, List.foldl_append]
+
 /-- Each appended leaf advances the position by one. -/
 theorem foldl_append_position {H : Type} [Hashable H]
     (f0 : NonEmptyFrontier H) (vs : List H) :

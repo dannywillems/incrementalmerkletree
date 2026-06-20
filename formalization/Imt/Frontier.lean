@@ -249,6 +249,15 @@ def append [Hashable H] (f : NonEmptyFrontier H) (v : H) : NonEmptyFrontier H :=
     (f.append v).leaf = v := by
   unfold append; split <;> rfl
 
+/-- Appending always leaves a non-empty ommer list (the even case prepends the
+    old leaf; the odd case emits the carry). -/
+theorem append_ommers_ne_nil [Hashable H] (f : NonEmptyFrontier H) (v : H) :
+    (f.append v).ommers ≠ [] := by
+  unfold append
+  split
+  · exact appendCarry_ne_nil _ _ _ _
+  · simp
+
 /-- If the position bit at `depth` is clear, extending the root computation by one
     level just wraps the current root with an empty subtree on the right. The
     frontier analog of the merkleRoot spine recurrence; it removes depth-padding
