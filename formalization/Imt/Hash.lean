@@ -134,6 +134,13 @@ theorem MerklePath.fromParts_length {depth : Nat} (elems : List H) (pos : Positi
   · exact hlen
   · simp [hlen] at h
 
+/-- P1.4 (iff form): a `MerklePath` is constructible exactly when the element
+    list has `depth` entries. -/
+theorem MerklePath.fromParts_isSome (elems : List H) (pos : Position) (depth : Nat) :
+    (MerklePath.fromParts elems pos depth).isSome = true ↔ elems.length = depth := by
+  unfold MerklePath.fromParts
+  by_cases h : elems.length = depth <;> simp [h]
+
 /-- Rust `MerklePath::root`: fold the leaf up through the sibling path, with the
     bit of the position at each level selecting whether the running digest is the
     left or right argument to `combine`. -/

@@ -30,6 +30,14 @@ theorem merkleRoot_take_congr [Hashable H] (d : Nat) (l₁ l₂ : List H)
     (h : l₁.take (2 ^ d) = l₂.take (2 ^ d)) : merkleRoot d l₁ = merkleRoot d l₂ := by
   rw [merkleRoot_take d l₁, merkleRoot_take d l₂, h]
 
+/-- A leaf list of all `emptyLeaf` (any length) hashes to the empty root. -/
+theorem merkleRoot_replicate [Hashable H] (d n : Nat) :
+    merkleRoot d (List.replicate n (Hashable.emptyLeaf : H)) = emptyRoot d := by
+  induction d generalizing n with
+  | zero => cases n <;> simp [merkleRoot, List.replicate_succ]
+  | succ d ih =>
+    rw [merkleRoot, List.take_replicate, List.drop_replicate, ih, ih, emptyRoot_succ]
+
 /-- Once the first `2^d` leaves are present, appending more does not change the
     depth-`d` root. The frontier-padding corollary of `merkleRoot_take`. -/
 theorem merkleRoot_append_of_full [Hashable H] (d : Nat) (leaves extra : List H)

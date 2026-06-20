@@ -165,6 +165,12 @@ theorem sibling_isRightChild (a : Address) :
   simp only [sibling, isRightChild, isLeftChild]
   bv_decide
 
+/-- Being a right child is exactly bit 0 of the index being set. -/
+theorem isRightChild_eq_getLsbD (a : Address) :
+    a.isRightChild = a.index.getLsbD 0 := by
+  simp only [isRightChild]
+  bv_decide
+
 end Address
 
 namespace Position
