@@ -40,6 +40,10 @@ jobs:
       - name: Select Lean ${{ matrix.toolchain }}
         run: echo "leanprover/lean4:${{ matrix.toolchain }}" > formalization/lean-toolchain
 
+      - name: Reject sorry
+        working-directory: formalization
+        run: if grep -rn 'sorry' Imt Imt.lean; then echo 'sorry found'; exit 1; fi
+
       - name: Build and run oracle checks
         working-directory: formalization
         run: lake build
@@ -63,6 +67,10 @@ jobs:
         with:
           path: ~/.cache/mathlib
           key: mathlib-${{ hashFiles('formalization/mathlib/lake-manifest.json') }}
+
+      - name: Reject sorry
+        working-directory: formalization/mathlib
+        run: if grep -rn 'sorry' ImtMathlib ImtMathlib.lean; then echo 'sorry found'; exit 1; fi
 
       - name: Get Mathlib cache
         working-directory: formalization/mathlib

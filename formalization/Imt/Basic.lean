@@ -182,6 +182,22 @@ theorem isAncestorOf_trans {a b c : Address}
         = (b.level.toNat - c.level.toNat) + (a.level.toNat - b.level.toNat) from by omega,
     BitVec.shiftRight_add, hibc, hiab]
 
+/-- An address is never a strict ancestor of itself (the level must strictly
+    decrease). -/
+theorem not_isAncestorOf_self (a : Address) : a.isAncestorOf a = false := by
+  simp [isAncestorOf]
+
+/-- P0.6: `contains` is transitive (with reflexivity, a preorder; with
+    `not_isAncestorOf_self`, a partial order). -/
+theorem contains_trans {a b c : Address}
+    (hab : a.contains b = true) (hbc : b.contains c = true) : a.contains c = true := by
+  simp only [contains, Bool.or_eq_true, beq_iff_eq] at hab hbc ⊢
+  rcases hab with rfl | hab
+  · exact hbc
+  · rcases hbc with rfl | hbc
+    · exact Or.inr hab
+    · exact Or.inr (isAncestorOf_trans hab hbc)
+
 end Address
 
 /-! ## Oracle checks (mirror the Rust unit tests)
