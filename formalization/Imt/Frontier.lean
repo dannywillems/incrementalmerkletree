@@ -170,6 +170,22 @@ theorem carryRun_le_length (p : BitVec 64) (level : Nat) (ommers : List H) :
       have h := ih (level + 1); omega
     · simp [hb]
 
+/-- `carryRun` depends only on the length of the ommer list, not its contents:
+    the run is a function of the position bits alone. -/
+theorem carryRun_length_eq (p : BitVec 64) (level : Nat) (l₁ l₂ : List H)
+    (h : l₁.length = l₂.length) : carryRun p level l₁ = carryRun p level l₂ := by
+  induction l₁ generalizing level l₂ with
+  | nil => cases l₂ <;> simp_all [carryRun]
+  | cons a as ih =>
+    cases l₂ with
+    | nil => simp at h
+    | cons b bs =>
+      rw [carryRun, carryRun]
+      simp only [List.length_cons, Nat.add_right_cancel_iff] at h
+      by_cases hb : p.getLsbD level = true
+      · simp only [hb, if_true]; rw [ih (level + 1) bs h]
+      · simp [hb]
+
 /-- Rust `NonEmptyFrontier::append`: extend the frontier with leaf `v`. If the
     old position is even (new position a right child) the old leaf becomes a
     level-0 ommer; otherwise (old position odd) the old leaf is carried up,
