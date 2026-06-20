@@ -89,11 +89,12 @@ side-conditions.
 ```lean
 class Hashable (H : Type) where
   emptyLeaf : H
-  combine   : Level -> H -> H -> H
+  combine   : Nat -> H -> H -> H
 ```
 
 No algebraic axioms. Every structural theorem is universally quantified over
-`H` and its `Hashable` instance.
+`H` and its `Hashable` instance. The level passed to `combine` is a `Nat`
+height index in the hash/tree layers (Layer 0 addressing keeps `BitVec`).
 
 ### 4.3 The reference model
 
@@ -213,8 +214,12 @@ defines the Layer 0 types and closes a set of ground "oracle" checks by
 definition fails the build, so continuous integration exercises the model
 rather than only typechecking signatures.
 
-The Lean project is built in CI on both the `stable` and `beta` Lean release
-channels (see `.github/workflows/lean.yml`).
+The Lean project is built in CI on two tracks (see
+`.github/workflows/lean.yml`): the Mathlib-free core package
+(`formalization/`) is built on both the `stable` and `beta` Lean release
+channels, while the Mathlib-dependent package (`formalization/mathlib/`),
+pinned to the exact toolchain Mathlib requires, is built with the prebuilt
+Mathlib cache.
 
 ## 8. Further reading
 

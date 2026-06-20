@@ -1,18 +1,20 @@
-# Builds the Lean 4 formalization in `formalization/` and runs its in-file
-# `decide` oracle checks (a failing check fails `lake build`).
+# Builds the Lean 4 formalization in `formalization/`.
 #
-# The toolchain is exercised on both the `stable` and `beta` release channels.
-# The committed `formalization/lean-toolchain` pins `stable` for local dev; the
-# matrix step overwrites it per channel before building. elan auto-installs the
-# pinned channel on first `lake` invocation.
+# Two tracks:
+#   * core    - the Mathlib-free package (Layer 0 / Layer 1 model). Built on
+#               both the `stable` and `beta` Lean release channels. Its in-file
+#               `decide` oracle checks run as part of `lake build`.
+#   * mathlib - the Mathlib-dependent package in `formalization/mathlib/`. Pinned
+#               to the exact toolchain Mathlib requires (it cannot use the
+#               channel matrix), built with the prebuilt Mathlib cache.
 
 name: Lean formalization
 
 on: [push, pull_request]
 
 jobs:
-  build:
-    name: Lean ${{ matrix.toolchain }}
+  core:
+    name: core / Lean ${{ matrix.toolchain }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -32,4 +34,30 @@ jobs:
 
       - name: Build and run oracle checks
         working-directory: formalization
+        run: lake build
+
+  mathlib:
+    name: mathlib track
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Mathlib oleans
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mathlib
+          key: mathlib-${{ hashFiles('formalization/mathlib/lake-manifest.json') }}
+
+      - name: Get Mathlib cache
+        working-directory: formalization/mathlib
+        run: lake exe cache get
+
+      - name: Build
+        working-directory: formalization/mathlib
         run: lake build

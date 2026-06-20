@@ -80,16 +80,23 @@ def clz (x : BitVec 64) : Nat := 64 - Nat.size x.toNat   -- count leading zeros
 ```lean
 class Hashable (H : Type) where
   emptyLeaf : H
-  combine   : Level -> H -> H -> H
+  combine   : Nat -> H -> H -> H
 
-def emptyRoot [Hashable H] : Level -> H
-  | l => Nat.rec emptyLeaf
-           (fun k acc => Hashable.combine (BitVec.ofNat 8 k) acc acc)
-           l.toNat
+def emptyRoot [Hashable H] : Nat -> H
+  | 0       => Hashable.emptyLeaf
+  | (n + 1) => Hashable.combine n (emptyRoot n) (emptyRoot n)
 ```
 
 No algebraic axioms on `combine`. Every structural theorem below is
 `forall H [Hashable H], ...`.
+
+Note on the level argument: in the hash/tree layers the level is modeled as a
+plain `Nat` height index rather than `BitVec 8`. A `BitVec 8` level forces a
+`level < 255` side-condition into the empty-root recurrence (because
+`(l + 1).toNat = l.toNat + 1` only without wraparound), which adds noise without
+buying faithfulness, since the level there is just a height counter. Layer 0
+addressing keeps `BitVec` for `Level`/`Position`/`index`, where the bit
+arithmetic and `bv_decide` matter.
 
 ### 2.3 the reference model
 
@@ -118,26 +125,41 @@ This `repr` + refinement pattern is reused verbatim at every layer.
 
 ## 3. proposed project layout
 
+The project is split into two lake packages (two-track CI):
+
+- the **core** package (`formalization/`) is Mathlib-free and is checked on both
+  the `stable` and `beta` Lean channels. It holds the Layer 0 addressing
+  arithmetic and the Layer 1 abstract-hash model, everything provable with
+  `bv_decide` / `decide` / structural recursion.
+- the **mathlib** package (`formalization/mathlib/`) depends on Mathlib and is
+  pinned to the exact toolchain Mathlib requires (currently `v4.31.0`, matching
+  Mathlib tag `v4.31.0`). It holds the theorems needing induction or the
+  `Nat`/`List` libraries (popcount, log2/rootLevel, the ancestor lattice,
+  witness_addrs) and, going forward, Layers 2-5. It `require`s the core package
+  by path.
+
 ```
 formalization/
 |-- PLAN.md                     (this file)
-|-- lakefile.toml               (depends on mathlib)
-|-- lean-toolchain
-`-- Imt/
-    |-- Basic.lean              Level, Position, Address + bit helpers
-    |-- Addressing.lean         Layer 0 theorems (P0.*)
-    |-- Hash.lean               Hashable, emptyRoot, merkleRoot model (P1.*)
-    |-- MerklePath.lean         MerklePath.root + verification (P1.3)
-    |-- Frontier.lean           NonEmptyFrontier / Frontier (P2.*)
-    |-- Witness.lean            IncrementalWitness (P3.*)
-    |-- Bridge.lean             MerkleBridge / BridgeTree (P4.*)
-    `-- Shard/
-        |-- Tree.lean           Node / Tree / LocatedTree (P5.5)
-        |-- Prunable.lean       PrunableTree, root_hash, merge (P5.1-5.3)
-        `-- ShardTree.lean      cap+shards, batch_insert (P5.4)
+|-- lakefile.toml               core package (Mathlib-free)
+|-- lean-toolchain              leanprover/lean4:stable
+|-- Imt.lean                    root module (imports Imt.Basic, Imt.Hash)
+|-- Imt/
+|   |-- Basic.lean              Level, Position, Address + Layer 0 (P0.*)
+|   `-- Hash.lean               Hashable, emptyRoot, MerklePath (P1.*)
+`-- mathlib/                    Mathlib package
+    |-- lakefile.toml           requires mathlib + the core package
+    |-- lean-toolchain          leanprover/lean4:v4.31.0
+    |-- lake-manifest.json      pins the Mathlib revision
+    |-- ImtMathlib.lean         root module
+    `-- ImtMathlib/
+        `-- Popcount.lean       Mathlib-backed Layer 0 facts (P0.4 support)
 ```
 
-The module dependency order is the recommended proof order (Section 5).
+Planned additional modules (proof order = dependency order, Section 5):
+`Imt/Frontier.lean` (P2.*), `Imt/Witness.lean` (P3.*), `Imt/Bridge.lean`
+(P4.*), and `Imt/Shard/{Tree,Prunable,ShardTree}.lean` (P5.*), placed in the
+core or mathlib package depending on whether they need Mathlib.
 
 ## 4. property catalog
 
