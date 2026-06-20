@@ -64,4 +64,20 @@ theorem popcount_or_add_and (a b : BitVec 64) :
   congr 1 <;>
     (apply List.countP_congr; intro i _; simp [BitVec.getLsbD_or, BitVec.getLsbD_and])
 
+/-- Population count is monotone under `&&&` (a bitwise-and can only clear bits). -/
+theorem popcount_and_le_left (a b : BitVec 64) : popcount (a &&& b) ≤ popcount a := by
+  simp only [popcount]
+  apply List.countP_mono_left
+  intro i _ h
+  rw [BitVec.getLsbD_and] at h
+  simp_all
+
+/-- Population count is monotone under `|||` (a bitwise-or can only set bits). -/
+theorem popcount_le_or (a b : BitVec 64) : popcount a ≤ popcount (a ||| b) := by
+  simp only [popcount]
+  apply List.countP_mono_left
+  intro i _ h
+  rw [BitVec.getLsbD_or]
+  simp_all
+
 end Imt
