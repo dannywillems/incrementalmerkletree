@@ -1,0 +1,11 @@
+# Lake package for the Lean 4 formalization of incrementalmerkletree.
+#
+# The initial scaffold depends only on core Lean (BitVec, decide). Mathlib
+# will be added at milestone M2 (see PLAN.md) when the Nat-bridge lemmas
+# (Nat.log2, Nat.popCount) are needed for the harder inductive proofs.
+
+name = "imt"
+defaultTargets = ["Imt"]
+
+[[lean_lib]]
+name = "Imt"
