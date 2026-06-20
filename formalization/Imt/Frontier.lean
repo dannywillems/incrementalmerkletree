@@ -133,6 +133,27 @@ def append [Hashable H] (f : NonEmptyFrontier H) (v : H) : NonEmptyFrontier H :=
     (f.append v).leaf = v := by
   unfold append; split <;> rfl
 
+/-- Appending one leaf to a single-leaf frontier yields position 1, the new leaf,
+    and the old leaf as the sole (level-0) ommer. -/
+theorem new_append [Hashable H] (a b : H) :
+    (new a).append b = { position := ⟨1⟩, leaf := b, ommers := [a] } := by
+  simp [append, new]
+
+/-- The root fold of the two-element frontier `⟨1, b, [a]⟩`: level 0 consumes the
+    ommer `a` (giving `combine 0 a b`), then the higher levels form an
+    empty-sibling spine. -/
+theorem root_two_frontier [Hashable H] (a b : H) (d : Nat) :
+    (NonEmptyFrontier.mk ⟨1⟩ b [a]).root (d + 1)
+      = spineFrom (Hashable.combine 0 a b) 1 d := by
+  simp only [NonEmptyFrontier.root, List.range_succ_eq_map, List.foldl_cons]
+  rw [if_pos (show (1 : BitVec 64).getLsbD 0 = true by decide)]
+  rw [NonEmptyFrontier.foldl_clear 1 (List.map Nat.succ (List.range d))
+    (Hashable.combine 0 a b) []
+    (by intro i hi; simp only [List.mem_map, List.mem_range] at hi
+        obtain ⟨j, _, rfl⟩ := hi; simp [BitVec.getLsbD_one])]
+  rw [List.foldl_map]
+  simp only [spineFrom, Nat.add_comm]
+
 end NonEmptyFrontier
 
 /-- Rust `Frontier<H, DEPTH>`: a possibly-empty frontier. The static depth bound
