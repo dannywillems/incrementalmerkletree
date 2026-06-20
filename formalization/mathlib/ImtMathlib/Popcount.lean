@@ -42,4 +42,8 @@ theorem popcount_eq_zero_iff (p : BitVec 64) : popcount p = 0 ↔ p = 0 := by
     exact BitVec.eq_of_toNat_eq (by simp [hz])
   · rintro rfl i _; simp
 
+/-- A 64-bit vector has positive population count iff it is nonzero. -/
+theorem popcount_pos_iff (p : BitVec 64) : 0 < popcount p ↔ p ≠ 0 := by
+  rw [Nat.pos_iff_ne_zero, ne_eq, popcount_eq_zero_iff]
+
 end Imt

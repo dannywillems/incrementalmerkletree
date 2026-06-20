@@ -11,12 +11,6 @@ import Mathlib
 
 namespace Imt
 
-/-- The spine-root recurrence: one more level wraps the spine in a combine with
-    the empty subtree root on the right. -/
-theorem spineRoot_succ {H : Type} [Hashable H] (leaf : H) (d : Nat) :
-    spineRoot leaf (d + 1) = Hashable.combine d (spineRoot leaf d) (emptyRoot d) := by
-  simp only [spineRoot, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
-
 /-- The left spine of a single leaf is exactly the reference Merkle root of the
     one-element leaf list. -/
 theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :

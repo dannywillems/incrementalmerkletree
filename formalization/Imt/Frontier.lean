@@ -23,6 +23,12 @@ theorem spineRoot_eq_spineFrom {H : Type} [Hashable H] (leaf : H) (depth : Nat) 
     spineRoot leaf depth = spineFrom leaf 0 depth := by
   simp only [spineRoot, spineFrom, Nat.zero_add]
 
+/-- The `spineRoot` recurrence: one more level wraps the spine with an empty
+    subtree on the right. -/
+theorem spineRoot_succ {H : Type} [Hashable H] (leaf : H) (d : Nat) :
+    spineRoot leaf (d + 1) = Hashable.combine d (spineRoot leaf d) (emptyRoot d) := by
+  rw [spineRoot_eq_spineFrom, spineRoot_eq_spineFrom, spineFrom_succ, Nat.zero_add]
+
 /-- Rust `NonEmptyFrontier`: the most recently appended `leaf` at `position`,
     plus the stored left siblings (`ommers`) needed to witness it, ordered from
     lowest level to highest.
