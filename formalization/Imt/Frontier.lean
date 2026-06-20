@@ -230,6 +230,13 @@ theorem trailingOnes_le (a : BitVec 64) : trailingOnes a ≤ 64 := by
   have := carryRun_le_length a 0 (List.replicate 64 (() : Unit))
   simpa using this
 
+/-- An odd value has at least one trailing one. -/
+theorem trailingOnes_pos_of_odd (a : BitVec 64) (h : a.getLsbD 0 = true) :
+    0 < trailingOnes a := by
+  unfold trailingOnes
+  rw [show (64 : Nat) = 63 + 1 from rfl, List.replicate_succ, carryRun]
+  simp [h]
+
 /-- `appendCarry` always produces a non-empty ommer list: it emits at least the
     carried value. -/
 theorem appendCarry_ne_nil [Hashable H] (p : BitVec 64) (level : Nat) (carry : H)

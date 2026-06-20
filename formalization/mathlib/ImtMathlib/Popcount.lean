@@ -80,4 +80,19 @@ theorem popcount_le_or (a b : BitVec 64) : popcount a ≤ popcount (a ||| b) := 
   rw [BitVec.getLsbD_or]
   simp_all
 
+/-- Population count is monotone under `&&&` on the right too. -/
+theorem popcount_and_le_right (a b : BitVec 64) : popcount (a &&& b) ≤ popcount b := by
+  simp only [popcount]
+  apply List.countP_mono_left
+  intro i _ h
+  rw [BitVec.getLsbD_and] at h
+  simp_all
+
+/-- For disjoint vectors, `popcount` of the union is additive. -/
+theorem popcount_or_of_and_eq_zero (a b : BitVec 64) (h : a &&& b = 0) :
+    popcount (a ||| b) = popcount a + popcount b := by
+  have hpe := popcount_or_add_and a b
+  rw [h, popcount_zero] at hpe
+  omega
+
 end Imt
