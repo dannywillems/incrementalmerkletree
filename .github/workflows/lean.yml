@@ -1,0 +1,35 @@
+# Builds the Lean 4 formalization in `formalization/` and runs its in-file
+# `decide` oracle checks (a failing check fails `lake build`).
+#
+# The toolchain is exercised on both the `stable` and `beta` release channels.
+# The committed `formalization/lean-toolchain` pins `stable` for local dev; the
+# matrix step overwrites it per channel before building. elan auto-installs the
+# pinned channel on first `lake` invocation.
+
+name: Lean formalization
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Lean ${{ matrix.toolchain }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Select Lean ${{ matrix.toolchain }}
+        run: echo "leanprover/lean4:${{ matrix.toolchain }}" > formalization/lean-toolchain
+
+      - name: Build and run oracle checks
+        working-directory: formalization
+        run: lake build
