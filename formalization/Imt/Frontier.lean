@@ -430,6 +430,39 @@ theorem rootState_snd_succ_set [Hashable H] (f : NonEmptyFrontier H) (j : Nat)
     (rootState f (j + 1)).2 = rest := by
   rw [rootState_succ]; simp [h, hommers]
 
+/-- The remaining ommers after folding `j` levels are the original ommer list
+    with the number of set position bits below `j` dropped from the front. Holds
+    unconditionally (if the ommers run out, both sides are empty). Used by: the
+    (A) assembly, which reads the consumed ommer off `f.ommers` at this index. -/
+theorem rootState_snd [Hashable H] (f : NonEmptyFrontier H) (j : Nat) :
+    (rootState f j).2
+      = f.ommers.drop ((List.range j).countP (fun i => f.position.val.getLsbD i)) := by
+  induction j with
+  | zero => simp [rootState_zero]
+  | succ j ih =>
+    have hcnt : (List.range (j + 1)).countP (fun i => f.position.val.getLsbD i)
+        = (List.range j).countP (fun i => f.position.val.getLsbD i)
+          + (if f.position.val.getLsbD j then 1 else 0) := by
+      rw [List.range_succ, List.countP_append, List.countP_singleton]
+    rw [hcnt]
+    by_cases hb : f.position.val.getLsbD j
+    · simp only [hb, if_true]
+      cases hh : (rootState f j).2 with
+      | nil =>
+        have hnil : f.ommers.drop
+            ((List.range j).countP (fun i => f.position.val.getLsbD i)) = [] := by
+          rw [← ih, hh]
+        have hle := List.drop_eq_nil_iff.mp hnil
+        rw [rootState_succ]
+        simp only [hb, if_true, hh]
+        exact (List.drop_eq_nil_of_le (by omega)).symm
+      | cons o rest =>
+        rw [rootState_snd_succ_set f j o rest hb hh,
+          show rest = (rootState f j).2.drop 1 from by rw [hh]; rfl, ih, List.drop_drop]
+    · have hbf : f.position.val.getLsbD j = false := by simpa using hb
+      simp only [hbf, Bool.false_eq_true, if_false, Nat.add_zero]
+      rw [rootState_snd_succ_clear f j hbf, ih]
+
 /-- P2.1 (even case): appending to a frontier at an even position preserves
     well-formedness. The old leaf becomes a new level-0 ommer (length +1) and the
     population count of the position rises by one (`popcount_succ_of_even`). -/
