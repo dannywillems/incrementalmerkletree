@@ -105,6 +105,17 @@ def isAncestorOf (self addr : Address) : Bool :=
 def contains (self addr : Address) : Bool :=
   self == addr || self.isAncestorOf addr
 
+/-- Rust `Address::next_at_level`: increment the index, keeping the level. -/
+def nextAtLevel (a : Address) : Address := { level := a.level, index := a.index + 1 }
+
+/-- Rust `Address::position_range_start`: the least leaf position under this
+    address, `index << level`. -/
+def positionRangeStart (a : Address) : Position := ⟨a.index <<< a.level.toNat⟩
+
+/-- Rust `Address::position_range_end`: the exclusive upper bound of the leaf
+    positions under this address, `(index + 1) << level`. -/
+def positionRangeEnd (a : Address) : Position := ⟨(a.index + 1) <<< a.level.toNat⟩
+
 end Address
 
 namespace Position
@@ -167,6 +178,18 @@ theorem abovePosition_index (l : Level) (p : Position) :
 @[simp] theorem abovePosition_zero_index (p : Position) :
     (abovePosition 0 p).index = p.val := by
   simp [abovePosition]
+
+/-- `next_at_level` keeps the level. -/
+@[simp] theorem nextAtLevel_level (a : Address) : (nextAtLevel a).level = a.level := rfl
+
+/-- `next_at_level` increments the index. -/
+@[simp] theorem nextAtLevel_index (a : Address) : (nextAtLevel a).index = a.index + 1 := rfl
+
+/-- The range start of the address above a position, taken at level 0, is the
+    position itself. -/
+theorem positionRangeStart_abovePosition_zero (p : Position) :
+    (positionRangeStart (abovePosition 0 p)).val = p.val := by
+  simp [positionRangeStart, abovePosition]
 
 /-- `parent` shifts the index right by one. -/
 theorem parent_index (a : Address) : a.parent.index = a.index >>> (1 : Nat) := rfl
