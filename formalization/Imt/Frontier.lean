@@ -94,4 +94,36 @@ theorem root_new [Hashable H] (leaf : H) (depth : Nat) :
 
 end NonEmptyFrontier
 
+/-- Rust `Frontier<H, DEPTH>`: a possibly-empty frontier. The static depth bound
+    is carried as a parameter. -/
+structure Frontier (H : Type) (depth : Nat) where
+  value : Option (NonEmptyFrontier H)
+
+namespace Frontier
+
+variable {H : Type} {depth : Nat}
+
+/-- The empty frontier. -/
+def empty : Frontier H depth := ⟨none⟩
+
+/-- A single-leaf frontier. -/
+def singleton (leaf : H) : Frontier H depth := ⟨some (NonEmptyFrontier.new leaf)⟩
+
+/-- Rust `Frontier::root`: the empty root when empty, else the inner frontier's
+    root computed up to `depth`. -/
+def root [Hashable H] (f : Frontier H depth) : H :=
+  match f.value with
+  | none => emptyRoot depth
+  | some nf => nf.root depth
+
+/-- P2.5 (empty case): the empty frontier's root is the empty root. -/
+@[simp] theorem empty_root [Hashable H] :
+    (empty : Frontier H depth).root = emptyRoot depth := rfl
+
+/-- The root of a single-leaf frontier is the inner frontier's root. -/
+@[simp] theorem singleton_root [Hashable H] (leaf : H) :
+    (singleton leaf : Frontier H depth).root = (NonEmptyFrontier.new leaf).root depth := rfl
+
+end Frontier
+
 end Imt
