@@ -53,6 +53,28 @@ theorem baseIndex_succ (m j : Nat) :
   rw [mod_two_pow_succ]
   omega
 
+/-- The subtree start never exceeds the leaf index. Used by: the ommer
+    characterization (drop offsets stay in range). -/
+theorem baseIndex_le (m j : Nat) : baseIndex m j ≤ m := by
+  unfold baseIndex; exact Nat.sub_le _ _
+
+/-- The level-`j` subtree containing the last leaf has length `(n-1) % 2^j + 1`.
+    Used by: the ommer characterization (the current subtree is `L.drop baseIndex`
+    and the merkleRoot split needs its length). -/
+theorem length_drop_baseIndex {H : Type} (L : List H) (j : Nat) (hL : 1 ≤ L.length) :
+    (L.drop (baseIndex (L.length - 1) j)).length = (L.length - 1) % 2 ^ j + 1 := by
+  rw [List.length_drop, baseIndex]
+  have h1 : (L.length - 1) % 2 ^ j ≤ L.length - 1 := Nat.mod_le _ _
+  omega
+
+/-- The current level-`j` subtree fits within `2^j` leaves. Used by: the ommer
+    characterization, to apply `merkleRoot_eq_spineFrom`-style facts. -/
+theorem length_drop_baseIndex_le {H : Type} (L : List H) (j : Nat) (hL : 1 ≤ L.length) :
+    (L.drop (baseIndex (L.length - 1) j)).length ≤ 2 ^ j := by
+  rw [length_drop_baseIndex L j hL]
+  have := Nat.mod_lt (L.length - 1) (Nat.pos_of_ne_zero (by positivity) : 0 < 2 ^ j)
+  omega
+
 /-- The left spine of a single leaf is exactly the reference Merkle root of the
     one-element leaf list. -/
 theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
