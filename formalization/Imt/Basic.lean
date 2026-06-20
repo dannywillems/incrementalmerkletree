@@ -33,7 +33,7 @@ structure Address where
 
 /-- Population count: the number of set bits. Used by `pastOmmerCount`. -/
 def popcount {w : Nat} (x : BitVec w) : Nat :=
-  (List.range w).foldl (fun acc i => acc + (if x.getLsbD i then 1 else 0)) 0
+  (List.range w).countP (fun i => x.getLsbD i)
 
 namespace Address
 
