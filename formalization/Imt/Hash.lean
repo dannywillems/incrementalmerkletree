@@ -37,7 +37,17 @@ def emptyRoot [Hashable H] : Nat → H
     tree whose leaves are `leaves`, padded on the right with `emptyLeaf`. The
     left subtree takes the first `2^d` leaves, the right subtree the rest. This
     is the naive, obviously-correct model that the efficient representations
-    (frontier, witness, shard tree) are proved to compute. -/
+    (frontier, witness, shard tree) are proved to compute.
+
+    ```text
+    merkleRoot (d+1) leaves:
+                         combine d
+                        /         \
+              merkleRoot d        merkleRoot d
+              (leaves.take 2^d)   (leaves.drop 2^d)
+    --------- 2^(d+1) leaf slots, padded with emptyLeaf beyond `leaves` --------
+    ```
+-/
 def merkleRoot [Hashable H] : Nat → List H → H
   | 0, leaves => leaves.headD Hashable.emptyLeaf
   | (d + 1), leaves =>
@@ -61,7 +71,19 @@ def merkleRoot [Hashable H] : Nat → List H → H
     empty subtree roots at levels `start, start+1, ..., start+count-1`. This is
     the spine a frontier climbs once its complete left part is reduced to a
     single root: every higher level pairs the running digest with an empty
-    subtree on the right. -/
+    subtree on the right.
+
+    ```text
+    spineFrom digest start count   (count empty-sibling levels stacked on digest):
+            combine (start+count-1)
+           /                       \
+          ...                  emptyRoot (start+count-1)
+         /
+      combine start
+        /         \
+     digest    emptyRoot start
+    ```
+-/
 def spineFrom [Hashable H] (digest : H) (start count : Nat) : H :=
   (List.range count).foldl
     (fun acc j => Hashable.combine (start + j) acc (emptyRoot (start + j))) digest

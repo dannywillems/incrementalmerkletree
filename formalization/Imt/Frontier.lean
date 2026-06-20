@@ -20,7 +20,22 @@ def spineRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) : H :=
 
 /-- Rust `NonEmptyFrontier`: the most recently appended `leaf` at `position`,
     plus the stored left siblings (`ommers`) needed to witness it, ordered from
-    lowest level to highest. -/
+    lowest level to highest.
+
+    A frontier keeps only the rightmost path of the tree plus the left siblings
+    hanging off it (the ommers), one per set bit of `position`. Example for
+    `position = 6` (7 leaves, `6 = 0b110`, so two ommers `o1, o2`):
+
+    ```text
+                  *                  leaf = leaf at position 6
+                 / \                 o2   = root of leaves 0..3   (left sibling at level 2)
+               o2   *                o1   = root of leaves 4,5    (left sibling at level 1)
+                   / \               *    = nodes recomputed on demand by `root`
+                 o1   *
+                     / \
+                   leaf  E           (E = empty; right side empty until more leaves arrive)
+    ```
+-/
 structure NonEmptyFrontier (H : Type) where
   position : Position
   leaf : H
@@ -53,7 +68,16 @@ theorem new_wf (leaf : H) : (new leaf).WF := by
 /-- Rust `NonEmptyFrontier::root` (clean level-fold form): fold the leaf up
     through levels `0 .. depth-1`. At level `i`, a set position bit consumes the
     next ommer as the left sibling; a clear bit pairs the running digest with the
-    empty subtree root `emptyRoot i` on the right. -/
+    empty subtree root `emptyRoot i` on the right.
+
+    ```text
+    digest := leaf
+    for i = 0 .. depth-1:
+      if bit i of position set:   digest := combine i  ommer_i  digest        (left sibling stored)
+      else:                       digest := combine i  digest  (emptyRoot i)  (right sibling empty)
+    root := digest
+    ```
+-/
 def root [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) : H :=
   ((List.range depth).foldl
     (fun (st : H × List H) (i : Nat) =>
@@ -116,7 +140,19 @@ def appendCarry [Hashable H] (p : BitVec 64) (level : Nat) (carry : H) :
 /-- Rust `NonEmptyFrontier::append`: extend the frontier with leaf `v`. If the
     old position is even (new position a right child) the old leaf becomes a
     level-0 ommer; otherwise (old position odd) the old leaf is carried up,
-    combining with stored ommers until a cleared level is reached. -/
+    combining with stored ommers until a cleared level is reached. This is a
+    binary increment of `position` where each carry merges two subtrees.
+
+    ```text
+    old position even (..0):   leaf is a left child, just store it as a new ommer
+        ommers [o0, o1, ..]  ->  [oldleaf, o0, o1, ..]      (no hashing)
+
+    old position odd (..0111): leaf is a right child, carry through the trailing
+        ones, merging with each ommer, and drop the carry at the first clear bit:
+        carry = combine 2 o2 (combine 1 o1 (combine 0 o0 oldleaf))
+        ommers [o0, o1, o2, o3, ..]  ->  [carry, o3, ..]
+    ```
+-/
 def append [Hashable H] (f : NonEmptyFrontier H) (v : H) : NonEmptyFrontier H :=
   if f.position.val.getLsbD 0 then
     { position := ⟨f.position.val + 1⟩, leaf := v,
@@ -132,6 +168,27 @@ def append [Hashable H] (f : NonEmptyFrontier H) (v : H) : NonEmptyFrontier H :=
 @[simp] theorem append_leaf [Hashable H] (f : NonEmptyFrontier H) (v : H) :
     (f.append v).leaf = v := by
   unfold append; split <;> rfl
+
+/-- If the position bit at `depth` is clear, extending the root computation by one
+    level just wraps the current root with an empty subtree on the right. The
+    frontier analog of the merkleRoot spine recurrence; it removes depth-padding
+    from the general root theorem.
+
+    A clear bit at `depth` means the frontier's leaf lies in the left half of the
+    level-`(depth+1)` subtree, so the right half is empty:
+
+    ```text
+              root (depth+1)                  =  combine depth _ _
+             /              \
+        root depth        emptyRoot depth     <- right half all empty (bit clear)
+         (left half)       (right half)
+    ```
+-/
+theorem root_succ_of_clear [Hashable H] (f : NonEmptyFrontier H) (depth : Nat)
+    (h : f.position.val.getLsbD depth = false) :
+    f.root (depth + 1) = Hashable.combine depth (f.root depth) (emptyRoot depth) := by
+  simp only [NonEmptyFrontier.root, List.range_succ, List.foldl_append, List.foldl_cons,
+    List.foldl_nil, h, Bool.false_eq_true, if_false]
 
 /-- Appending one leaf to a single-leaf frontier yields position 1, the new leaf,
     and the old leaf as the sole (level-0) ommer. -/
