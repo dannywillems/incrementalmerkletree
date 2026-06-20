@@ -33,6 +33,30 @@ def emptyRoot [Hashable H] : Nat → H
 @[simp] theorem emptyRoot_zero [Hashable H] :
     (emptyRoot 0 : H) = Hashable.emptyLeaf := rfl
 
+/-- The reference Merkle root (PLAN.md, P1.2): the root of the perfect depth-`d`
+    tree whose leaves are `leaves`, padded on the right with `emptyLeaf`. The
+    left subtree takes the first `2^d` leaves, the right subtree the rest. This
+    is the naive, obviously-correct model that the efficient representations
+    (frontier, witness, shard tree) are proved to compute. -/
+def merkleRoot [Hashable H] : Nat → List H → H
+  | 0, leaves => leaves.headD Hashable.emptyLeaf
+  | (d + 1), leaves =>
+      Hashable.combine d
+        (merkleRoot d (leaves.take (2 ^ d)))
+        (merkleRoot d (leaves.drop (2 ^ d)))
+
+/-- At depth 0 the root is the single (first) leaf, or `emptyLeaf` if absent. -/
+@[simp] theorem merkleRoot_zero [Hashable H] (leaves : List H) :
+    merkleRoot 0 leaves = leaves.headD Hashable.emptyLeaf := rfl
+
+/-- The reference root of an empty leaf list is the empty root: an all-empty
+    tree hashes to `emptyRoot d`. -/
+@[simp] theorem merkleRoot_nil [Hashable H] (d : Nat) :
+    merkleRoot d ([] : List H) = emptyRoot d := by
+  induction d with
+  | zero => rfl
+  | succ d ih => simp [merkleRoot, ih]
+
 /-- A path from a leaf to a root (Rust `MerklePath<H, DEPTH>`). The length
     invariant (`pathElems.length = depth`) is enforced by `fromParts`. -/
 structure MerklePath (H : Type) (depth : Nat) where
