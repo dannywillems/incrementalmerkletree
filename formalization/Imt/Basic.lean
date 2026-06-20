@@ -13,6 +13,8 @@ check breaks the build, so CI exercises the model rather than just typechecking
 signatures.
 -/
 
+import Std.Tactic.BVDecide
+
 namespace Imt
 
 /-- A tree level. Rust `u8`. Level 0 is a leaf. -/
@@ -69,6 +71,39 @@ def rootLevel (p : Position) : Level :=
 def pastOmmerCount (p : Position) : Nat := popcount p.val
 
 end Position
+
+/-! ## Layer 0 theorems (milestone M1)
+
+Universal versions of the navigation identities from PLAN.md, proved for all
+inputs over the BitVec model rather than only on the ground oracle values
+below. -/
+
+namespace Address
+
+/-- P0.1: `sibling` is an involution (`tests::*` navigation identities). -/
+@[simp] theorem sibling_sibling (a : Address) : a.sibling.sibling = a := by
+  obtain ⟨level, index⟩ := a
+  have h : (index ^^^ 1) ^^^ 1 = index := by bv_decide
+  simp only [sibling, h]
+
+/-- `parent` raises the level by one. -/
+@[simp] theorem parent_level (a : Address) : a.parent.level = a.level + 1 := rfl
+
+/-- `sibling` preserves the level. -/
+@[simp] theorem sibling_level (a : Address) : a.sibling.level = a.level := rfl
+
+/-- P0.1: a node is a right child iff it is not a left child. -/
+theorem isRightChild_eq_not_isLeftChild (a : Address) :
+    a.isRightChild = !a.isLeftChild := by
+  simp only [isRightChild, isLeftChild]
+  bv_decide
+
+/-- P0.2: `above_position` shifts the position right by the level
+    (`tests::addr_above_position`). -/
+theorem abovePosition_index (l : Level) (p : Position) :
+    (abovePosition l p).index = p.val >>> l.toNat := rfl
+
+end Address
 
 /-! ## Oracle checks (mirror the Rust unit tests)
 
