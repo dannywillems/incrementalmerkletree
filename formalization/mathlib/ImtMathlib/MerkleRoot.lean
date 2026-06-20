@@ -32,13 +32,6 @@ theorem merkleRoot_append_of_full [Hashable H] (d : Nat) (leaves extra : List H)
   rw [merkleRoot_take d (leaves ++ extra), merkleRoot_take d leaves,
     List.take_append_of_le_length h]
 
-/-- The spine recurrence: one more level wraps the spine in a combine with the
-    empty subtree root on the right. -/
-theorem spineFrom_succ [Hashable H] (digest : H) (start n : Nat) :
-    spineFrom digest start (n + 1)
-      = Hashable.combine (start + n) (spineFrom digest start n) (emptyRoot (start + n)) := by
-  simp only [spineFrom, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
-
 /-- Spine-extension of `merkleRoot`: when the leaves fit in a complete subtree at
     level `k`, the full depth-`(k+n)` root is the level-`k` root wrapped in a
     spine of empty subtree roots over the `n` higher levels. This is the

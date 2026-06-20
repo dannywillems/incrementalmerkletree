@@ -88,6 +88,13 @@ def spineFrom [Hashable H] (digest : H) (start count : Nat) : H :=
   (List.range count).foldl
     (fun acc j => Hashable.combine (start + j) acc (emptyRoot (start + j))) digest
 
+/-- The spine recurrence: one more level wraps the spine in a combine with the
+    empty subtree root on the right. -/
+theorem spineFrom_succ [Hashable H] (digest : H) (start n : Nat) :
+    spineFrom digest start (n + 1)
+      = Hashable.combine (start + n) (spineFrom digest start n) (emptyRoot (start + n)) := by
+  simp only [spineFrom, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
+
 /-- A path from a leaf to a root (Rust `MerklePath<H, DEPTH>`). The length
     invariant (`pathElems.length = depth`) is enforced by `fromParts`. -/
 structure MerklePath (H : Type) (depth : Nat) where

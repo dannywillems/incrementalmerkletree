@@ -196,6 +196,41 @@ theorem new_append [Hashable H] (a b : H) :
     (new a).append b = { position := ⟨1⟩, leaf := b, ommers := [a] } := by
   simp [append, new]
 
+/-- Appending a third leaf exercises the carry: from `⟨1, b, [a]⟩` (position 1,
+    odd) the old leaf `b` combines with ommer `a` and the result is stored as a
+    single level-1 ommer. -/
+theorem new_append_append [Hashable H] (a b c : H) :
+    ((new a).append b).append c
+      = { position := ⟨2⟩, leaf := c, ommers := [Hashable.combine 0 a b] } := by
+  simp [append, new, appendCarry]
+
+/-- The frontier analog of `merkleRoot_eq_spineFrom`: if every position bit from
+    level `k` up to `k+n` is clear, the depth-`(k+n)` root is the depth-`k` root
+    wrapped in a spine of `n` empty-sibling levels. This lets a root be computed
+    at the position's own root level, then climbed to any larger depth.
+
+    ```text
+    root (k+n)  =     combine (k+n-1)
+                     /              \
+                   ...            emptyRoot (k+n-1)
+                  /
+              root k                  (the meaningful part; bits k..k+n-1 clear)
+    ```
+-/
+theorem root_eq_spineFrom [Hashable H] (f : NonEmptyFrontier H) (k : Nat) :
+    ∀ n, (∀ i, k ≤ i → i < k + n → f.position.val.getLsbD i = false) →
+      f.root (k + n) = spineFrom (f.root k) k n := by
+  intro n
+  induction n with
+  | zero => intro _; simp [spineFrom]
+  | succ n ih =>
+    intro h
+    have hk : f.position.val.getLsbD (k + n) = false :=
+      h (k + n) (Nat.le_add_right k n) (by omega)
+    have ih' := ih (fun i hi hlt => h i hi (by omega))
+    rw [show k + (n + 1) = (k + n) + 1 from by omega, root_succ_of_clear f (k + n) hk, ih',
+      spineFrom_succ]
+
 /-- The root fold of the two-element frontier `⟨1, b, [a]⟩`: level 0 consumes the
     ommer `a` (giving `combine 0 a b`), then the higher levels form an
     empty-sibling spine. -/
