@@ -2,3 +2,4 @@
 -- See PLAN.md for the full property map and roadmap.
 import Imt.Basic
 import Imt.Hash
+import Imt.Frontier
