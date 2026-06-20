@@ -2,3 +2,4 @@
 -- See ../PLAN.md (milestone M2+).
 import ImtMathlib.Popcount
 import ImtMathlib.MerkleRoot
+import ImtMathlib.Frontier
