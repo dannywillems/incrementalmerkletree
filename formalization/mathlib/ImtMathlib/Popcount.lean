@@ -46,4 +46,22 @@ theorem popcount_eq_zero_iff (p : BitVec 64) : popcount p = 0 ↔ p = 0 := by
 theorem popcount_pos_iff (p : BitVec 64) : 0 < popcount p ↔ p ≠ 0 := by
   rw [Nat.pos_iff_ne_zero, ne_eq, popcount_eq_zero_iff]
 
+/-- Inclusion-exclusion for `List.countP` over two Bool predicates. -/
+theorem countP_or_and {α : Type} (l : List α) (p q : α → Bool) :
+    l.countP p + l.countP q
+      = l.countP (fun x => p x || q x) + l.countP (fun x => p x && q x) := by
+  induction l with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.countP_cons]
+    cases hp : p x <;> cases hq : q x <;> simp_all <;> omega
+
+/-- Inclusion-exclusion for `popcount`: `|a| + |b| = |a ||| b| + |a &&& b|`. -/
+theorem popcount_or_add_and (a b : BitVec 64) :
+    popcount a + popcount b = popcount (a ||| b) + popcount (a &&& b) := by
+  simp only [popcount]
+  rw [countP_or_and]
+  congr 1 <;>
+    (apply List.countP_congr; intro i _; simp [BitVec.getLsbD_or, BitVec.getLsbD_and])
+
 end Imt
