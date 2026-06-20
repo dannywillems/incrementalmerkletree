@@ -195,6 +195,50 @@ theorem root_merkleRoot_lift {H : Type} [Hashable H]
     f.root (k + n) = merkleRoot (k + n) L := by
   rw [f.root_eq_spineFrom k n hbits, hk, ← merkleRoot_eq_spineFrom k L hlen n]
 
+/-- Clear-bit step of the P2.3 joint invariant (`.1` component): when bit `j` of
+    the position is clear, the level-`(j+1)` subtree root wraps the level-`j` root
+    with an empty right sibling. Used by: the ommer characterization induction. -/
+theorem rootState_fst_succ_clear {H : Type} [Hashable H] (f : NonEmptyFrontier H)
+    (L : List H) (j : Nat) (hpos : f.position.val.toNat = L.length - 1)
+    (hL : 1 ≤ L.length) (hbit : (L.length - 1) / 2 ^ j % 2 = 0)
+    (hIH : (rootState f j).1 = merkleRoot j (L.drop (baseIndex (L.length - 1) j))) :
+    (rootState f (j + 1)).1
+      = merkleRoot (j + 1) (L.drop (baseIndex (L.length - 1) (j + 1))) := by
+  have hclear : f.position.val.getLsbD j = false := by
+    have h := ite_getLsbD_eq_div_mod f.position.val j
+    rw [hpos, hbit] at h
+    by_contra hc
+    simp only [Bool.not_eq_false] at hc
+    rw [hc] at h; simp at h
+  rw [rootState_succ]
+  simp only [hclear, Bool.false_eq_true, if_false]
+  have hb : baseIndex (L.length - 1) (j + 1) = baseIndex (L.length - 1) j := by
+    rw [baseIndex_succ, hbit]; simp
+  rw [hb, merkleRoot_succ_of_le _ _ (length_drop_baseIndex_le L j hL), hIH]
+
+/-- Set-bit step of the P2.3 joint invariant (`.1` component): when bit `j` is
+    set, the next root combines the consumed ommer (the complete left sibling,
+    value `o`) with the level-`j` root. The ommer value `ho` is supplied by the
+    ommer-value characterization. Used by: the ommer characterization induction. -/
+theorem rootState_fst_succ_set {H : Type} [Hashable H] (f : NonEmptyFrontier H)
+    (L : List H) (j : Nat) (o : H) (rest : List H)
+    (hpos : f.position.val.toNat = L.length - 1)
+    (hbit : (L.length - 1) / 2 ^ j % 2 = 1)
+    (hommers : (rootState f j).2 = o :: rest)
+    (ho : o = merkleRoot j ((L.drop (baseIndex (L.length - 1) (j + 1))).take (2 ^ j)))
+    (hIH : (rootState f j).1 = merkleRoot j (L.drop (baseIndex (L.length - 1) j))) :
+    (rootState f (j + 1)).1
+      = merkleRoot (j + 1) (L.drop (baseIndex (L.length - 1) (j + 1))) := by
+  have hset : f.position.val.getLsbD j = true := by
+    have h := ite_getLsbD_eq_div_mod f.position.val j
+    rw [hpos, hbit] at h
+    by_contra hc
+    simp only [Bool.not_eq_true] at hc
+    rw [hc] at h; simp at h
+  rw [rootState_succ]
+  simp only [hset, if_true, hommers]
+  rw [merkleRoot_succ, List.drop_drop, baseIndex_add_pow (L.length - 1) j hbit, ← hIH, ← ho]
+
 end NonEmptyFrontier
 
 end Imt
