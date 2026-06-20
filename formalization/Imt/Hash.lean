@@ -90,4 +90,9 @@ def MerklePath.root [Hashable H] {depth : Nat} (p : MerklePath H depth) (leaf : 
         Hashable.combine i h root)
     leaf
 
+/-- An empty path leaves the leaf unchanged (the depth-0 base case of P1.3). -/
+@[simp] theorem MerklePath.root_nil [Hashable H] (pos : Position) (leaf : H) :
+    MerklePath.root (⟨[], pos⟩ : MerklePath H 0) leaf = leaf := by
+  simp [MerklePath.root]
+
 end Imt
