@@ -190,6 +190,17 @@ theorem root_succ_of_clear [Hashable H] (f : NonEmptyFrontier H) (depth : Nat)
   simp only [NonEmptyFrontier.root, List.range_succ, List.foldl_append, List.foldl_cons,
     List.foldl_nil, h, Bool.false_eq_true, if_false]
 
+/-- P2.1 (even case): appending to a frontier at an even position preserves
+    well-formedness. The old leaf becomes a new level-0 ommer (length +1) and the
+    population count of the position rises by one (`popcount_succ_of_even`). -/
+theorem append_wf_even [Hashable H] (f : NonEmptyFrontier H) (v : H)
+    (heven : f.position.val.getLsbD 0 = false) (hwf : f.WF) : (f.append v).WF := by
+  unfold WF append at *
+  rw [if_neg (by rw [heven]; simp)]
+  simp only [List.length_cons]
+  rw [popcount_succ_of_even f.position.val heven]
+  omega
+
 /-- Appending one leaf to a single-leaf frontier yields position 1, the new leaf,
     and the old leaf as the sole (level-0) ommer. -/
 theorem new_append [Hashable H] (a b : H) :
