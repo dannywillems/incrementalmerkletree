@@ -341,6 +341,42 @@ theorem root_succ_split [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) :
   by_cases h : f.position.val.getLsbD depth <;> simp only [h, if_true] <;>
     cases oms <;> rfl
 
+/-- The root fold's running state after `depth` levels: the digest computed so
+    far and the ommers not yet consumed. Naming the state lets the P2.3 ommer
+    characterization run its induction on the level. Used by: the ommer
+    characterization for the P2.3 root theorem. -/
+def rootState [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) : H × List H :=
+  (List.range depth).foldl
+    (fun (st : H × List H) (i : Nat) =>
+      if f.position.val.getLsbD i then
+        (match st.2 with | [] => st | o :: rest => (Hashable.combine i o st.1, rest))
+      else (Hashable.combine i st.1 (emptyRoot i), st.2))
+    (f.leaf, f.ommers)
+
+/-- `root` is the digest component of the fold state. Lets `root` be reasoned
+    about via `rootState`. Used by: the ommer characterization for P2.3. -/
+theorem root_eq_rootState_fst [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) :
+    f.root depth = (rootState f depth).1 := rfl
+
+/-- The fold state before any level is the leaf and the full ommer list. -/
+theorem rootState_zero [Hashable H] (f : NonEmptyFrontier H) :
+    rootState f 0 = (f.leaf, f.ommers) := rfl
+
+/-- One-level recurrence for the fold state: a set bit consumes the next ommer on
+    the left, a clear bit pairs the digest with an empty subtree on the right.
+    Used by: the inductive step of the ommer characterization. -/
+theorem rootState_succ [Hashable H] (f : NonEmptyFrontier H) (depth : Nat) :
+    rootState f (depth + 1) =
+      (if f.position.val.getLsbD depth then
+        (match (rootState f depth).2 with
+          | [] => rootState f depth
+          | o :: rest => (Hashable.combine depth o (rootState f depth).1, rest))
+       else (Hashable.combine depth (rootState f depth).1 (emptyRoot depth),
+             (rootState f depth).2)) := by
+  unfold rootState
+  rw [List.range_succ, List.foldl_append]
+  rfl
+
 /-- P2.1 (even case): appending to a frontier at an even position preserves
     well-formedness. The old leaf becomes a new level-0 ommer (length +1) and the
     population count of the position rises by one (`popcount_succ_of_even`). -/
