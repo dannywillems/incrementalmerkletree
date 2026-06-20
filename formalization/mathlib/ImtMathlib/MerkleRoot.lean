@@ -82,4 +82,13 @@ theorem merkleRoot_succ_of_le [Hashable H] (j : Nat) (M : List H)
     merkleRoot (j + 1) M = Hashable.combine j (merkleRoot j M) (emptyRoot j) := by
   rw [merkleRoot, List.take_of_length_le h, List.drop_eq_nil_of_le h, merkleRoot_nil]
 
+/-- Atomic merge step: combining a complete left subtree (`A`, exactly `2^level`
+    leaves) with any right subtree `B` is the parent root over `A ++ B`. The
+    inductive engine of the carry-merge in the P2.3 ommer characterization. -/
+theorem combine_merkleRoot [Hashable H] (level : Nat) (A B : List H)
+    (h : A.length = 2 ^ level) :
+    Hashable.combine level (merkleRoot level A) (merkleRoot level B)
+      = merkleRoot (level + 1) (A ++ B) := by
+  rw [merkleRoot_succ, ← h, List.take_left, List.drop_left]
+
 end Imt
