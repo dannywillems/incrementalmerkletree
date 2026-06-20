@@ -6,6 +6,7 @@ constructed (single-leaf) frontier computes the reference Merkle root of the
 one-element leaf list. The inductive step over `append` is the remaining work.
 -/
 import Imt.Frontier
+import ImtMathlib.MerkleRoot
 import Mathlib
 
 namespace Imt
@@ -40,5 +41,16 @@ theorem Frontier.singleton_root_eq_merkleRoot {H : Type} [Hashable H]
     (leaf : H) (depth : Nat) :
     (Frontier.singleton leaf : Frontier H depth).root = merkleRoot depth [leaf] := by
   rw [Frontier.singleton_root, root_new_eq_merkleRoot]
+
+/-- P2.3 for two leaves: a frontier built from two appends computes the
+    reference Merkle root of the two-element list. -/
+theorem root_two_eq_merkleRoot {H : Type} [Hashable H] (a b : H) (d : Nat) :
+    ((NonEmptyFrontier.new a).append b).root (d + 1) = merkleRoot (d + 1) [a, b] := by
+  rw [NonEmptyFrontier.new_append, NonEmptyFrontier.root_two_frontier]
+  have hmr : merkleRoot (d + 1) [a, b] = spineFrom (merkleRoot 1 [a, b]) 1 d := by
+    have h := merkleRoot_eq_spineFrom 1 [a, b] (by norm_num) d
+    rwa [Nat.add_comm 1 d] at h
+  rw [hmr]
+  congr 1
 
 end Imt
