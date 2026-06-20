@@ -137,6 +137,27 @@ def appendCarry [Hashable H] (p : BitVec 64) (level : Nat) (carry : H) :
     else
       carry :: o :: rest
 
+/-- How many ommers `appendCarry` consumes: the run of consecutive set bits of
+    `p` starting at `level`, capped by the number of ommers. -/
+def carryRun (p : BitVec 64) (level : Nat) : List H → Nat
+  | [] => 0
+  | _ :: rest => if p.getLsbD level then carryRun p (level + 1) rest + 1 else 0
+
+/-- The carry consumes `carryRun` ommers and emits one merged ommer, so the
+    resulting list has length `ommers.length + 1 - carryRun`. -/
+theorem appendCarry_length [Hashable H] (p : BitVec 64) (level : Nat) (carry : H)
+    (ommers : List H) :
+    (appendCarry p level carry ommers).length
+      = ommers.length + 1 - carryRun p level ommers := by
+  induction ommers generalizing level carry with
+  | nil => simp [appendCarry, carryRun]
+  | cons o rest ih =>
+    rw [appendCarry, carryRun]
+    by_cases hb : p.getLsbD level = true
+    · simp only [hb, if_true, List.length_cons]
+      rw [ih]; omega
+    · simp [hb, List.length_cons]
+
 /-- Rust `NonEmptyFrontier::append`: extend the frontier with leaf `v`. If the
     old position is even (new position a right child) the old leaf becomes a
     level-0 ommer; otherwise (old position odd) the old leaf is carried up,
