@@ -198,6 +198,21 @@ theorem contains_trans {a b c : Address}
     · exact Or.inr hab
     · exact Or.inr (isAncestorOf_trans hab hbc)
 
+/-- P0.6: `contains` is antisymmetric, so it is a partial order: two addresses
+    that each contain the other are equal (mutual strict ancestry is impossible
+    because the level would have to both increase and decrease). -/
+theorem contains_antisymm {a b : Address}
+    (hab : a.contains b = true) (hba : b.contains a = true) : a = b := by
+  simp only [contains, Bool.or_eq_true, beq_iff_eq] at hab hba
+  rcases hab with rfl | hab
+  · rfl
+  · rcases hba with rfl | hba
+    · rfl
+    · simp only [isAncestorOf, Bool.and_eq_true, decide_eq_true_eq] at hab hba
+      obtain ⟨hab, _⟩ := hab
+      obtain ⟨hba, _⟩ := hba
+      omega
+
 end Address
 
 /-! ## Oracle checks (mirror the Rust unit tests)
