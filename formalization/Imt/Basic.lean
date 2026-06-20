@@ -55,9 +55,25 @@ def isLeftChild (a : Address) : Bool := (a.index &&& 1) == 0
 def abovePosition (l : Level) (p : Position) : Address :=
   { level := l, index := p.val >>> l.toNat }
 
+/-- Rust `Address::children`: `None` at level 0, otherwise the two
+    level-(level-1) nodes at indices `2*index` and `2*index + 1`. -/
+def children (a : Address) : Option (Address × Address) :=
+  if a.level = 0 then
+    none
+  else
+    some
+      ( { level := a.level - 1, index := a.index <<< (1 : Nat) },
+        { level := a.level - 1, index := (a.index <<< (1 : Nat)) + 1 } )
+
 end Address
 
 namespace Position
+
+/-- Rust `Position::is_complete_subtree`: the tree whose rightmost leaf is at
+    this position contains a perfect subtree rooted at `root_level` iff the low
+    `root_level` bits of the position are all set. -/
+def isCompleteSubtree (p : Position) (l : Level) : Bool :=
+  (List.range l.toNat).all (fun i => p.val.getLsbD i)
 
 /-- Rust `Position::root_level`: `64 - leading_zeros`, i.e. one above the
     highest set bit (and 0 for position 0). Computed by scanning bits so it
@@ -103,6 +119,21 @@ theorem isRightChild_eq_not_isLeftChild (a : Address) :
 theorem abovePosition_index (l : Level) (p : Position) :
     (abovePosition l p).index = p.val >>> l.toNat := rfl
 
+/-- `parent` shifts the index right by one. -/
+theorem parent_index (a : Address) : a.parent.index = a.index >>> (1 : Nat) := rfl
+
+/-- P0.1: every node is a left child or a right child. -/
+theorem isLeftChild_or_isRightChild (a : Address) :
+    a.isLeftChild || a.isRightChild := by
+  simp only [isLeftChild, isRightChild]
+  bv_decide
+
+/-- P0.1: `sibling` flips child parity. -/
+theorem sibling_isRightChild (a : Address) :
+    a.sibling.isRightChild = a.isLeftChild := by
+  simp only [sibling, isRightChild, isLeftChild]
+  bv_decide
+
 end Address
 
 /-! ## Oracle checks (mirror the Rust unit tests)
@@ -124,6 +155,19 @@ example : parent { level := 0, index := 8 } = { level := 1, index := 4 } := by d
 
 -- P0.2 (instance): above_position. `tests::addr_above_position`.
 example : abovePosition 3 { val := 9 } = { level := 3, index := 1 } := by decide
+
+-- children. `tests::addr_children`.
+example : children { level := 0, index := 1 } = none := by decide
+example : children { level := 3, index := 1 }
+    = some ({ level := 2, index := 2 }, { level := 2, index := 3 }) := by decide
+
+-- is_complete_subtree. `tests::position_is_complete_subtree`.
+example : Position.isCompleteSubtree { val := 0 } 0 = true := by decide
+example : Position.isCompleteSubtree { val := 1 } 1 = true := by decide
+example : Position.isCompleteSubtree { val := 2 } 1 = false := by decide
+example : Position.isCompleteSubtree { val := 3 } 2 = true := by decide
+example : Position.isCompleteSubtree { val := 4 } 2 = false := by decide
+example : Position.isCompleteSubtree { val := 7 } 3 = true := by decide
 
 -- P0.3: root_level. `tests::position_root_level`.
 example : Position.rootLevel { val := 0 } = 0 := by decide
