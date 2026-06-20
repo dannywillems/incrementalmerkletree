@@ -434,3 +434,21 @@ or `native_decide` on the BitVec model):
 | `prop_commitment_tree_roundtrip` | imt | round-trip | P2.6 |
 | `witness_tip_position` | imt | tip position | P3.2 |
 | `check_operations` proptests | shardtree | differential ops | P5.1, P5.4 |
+
+## 7. findings from the formalization
+
+Things the Lean model surfaced that are worth recording:
+
+- **WF preservation needs a non-full position (BitVec wraparound).** `append`
+  preserving the well-formedness invariant `ommers.length = popcount(position)`
+  holds in the even case unconditionally (`append_wf_even`), but in the odd
+  (carry) case it relies on `popcount(p+1) = popcount(p) + 1 - trailingOnes(p)`,
+  which fails at `p = all-ones` (there `p+1` wraps to `0`, so `popcount(p+1)=0`
+  while `appendCarry` still emits one ommer). The odd-case WF therefore requires
+  a hypothesis like `p + 1 != 0` (the position is not the full tree). This is
+  exactly why Rust's `Frontier::append` checks `is_complete_subtree(DEPTH)` and
+  refuses to append to a full tree: without that guard the frontier invariant
+  would break at the boundary. The structural half is proved
+  (`appendCarry_length`, `carryRun`, `carryRun_le_length`); the remaining
+  number-theory bridge is `carryRun = trailingOnes` (under the WF length bound)
+  plus the `popcount` increment identity above.
