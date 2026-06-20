@@ -26,6 +26,16 @@ theorem getLsbD_ge (p : BitVec 64) (i : Nat) (h : 64 ≤ i) : p.getLsbD i = fals
   exact Nat.testBit_lt_two_pow
     (Nat.lt_of_lt_of_le p.isLt (Nat.pow_le_pow_right (by norm_num) h))
 
+/-- A value below `2^k` has every bit clear at or above level `k`. Generalizes
+    `getLsbD_ge`. Used by: applying `NonEmptyFrontier.root_merkleRoot_lift` to
+    `ofList`, whose position `L.length - 1` is below `2^k` once `L.length <= 2^k`,
+    which discharges that lemma's `hbits` hypothesis. -/
+theorem getLsbD_eq_false_of_lt (p : BitVec 64) (k i : Nat)
+    (hp : p.toNat < 2 ^ k) (hik : k ≤ i) : p.getLsbD i = false := by
+  rw [getLsbD_eq_testBit]
+  exact Nat.testBit_lt_two_pow
+    (Nat.lt_of_lt_of_le hp (Nat.pow_le_pow_right (by norm_num) hik))
+
 /-- A 64-bit vector has zero population count iff it is the zero vector. -/
 theorem popcount_eq_zero_iff (p : BitVec 64) : popcount p = 0 ↔ p = 0 := by
   rw [popcount_eq_countP_testBit, List.countP_eq_zero]

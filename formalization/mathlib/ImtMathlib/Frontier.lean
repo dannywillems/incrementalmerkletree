@@ -105,6 +105,21 @@ theorem foldl_append_leaf {H : Type} [Hashable H]
     (ofList v0 vs).leaf = vs.getLastD v0 := by
   simp [ofList, foldl_append_leaf, new]
 
+/-- Depth-padding reduction for the frontier root theorem P2.3: if a frontier's
+    root already equals the reference `merkleRoot` at a level `k` that holds all
+    of `L` (`L.length <= 2^k`, and the position has no set bit at or above `k`),
+    then equality lifts to every higher level `k + n`, because both sides climb
+    the same empty-sibling spine above `k`. Used by: P2.3. This is the
+    "everything above the tight level" half of the centerpiece; it reduces P2.3
+    to the single tight-level obligation `hk` (the ommer characterization). -/
+theorem root_merkleRoot_lift {H : Type} [Hashable H]
+    (f : NonEmptyFrontier H) (L : List H) (k n : Nat)
+    (hbits : ∀ i, k ≤ i → i < k + n → f.position.val.getLsbD i = false)
+    (hlen : L.length ≤ 2 ^ k)
+    (hk : f.root k = merkleRoot k L) :
+    f.root (k + n) = merkleRoot (k + n) L := by
+  rw [f.root_eq_spineFrom k n hbits, hk, ← merkleRoot_eq_spineFrom k L hlen n]
+
 end NonEmptyFrontier
 
 end Imt

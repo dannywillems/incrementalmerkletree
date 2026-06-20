@@ -26,10 +26,15 @@ Each layer is "done" when its root-correctness theorem is proved with no
 
 ## The open leaves blocking target 1 and 2 (the only things worth proving next)
 
-- **Ommer characterization** (blocks P2.3): the frontier's ommers are the
-  complete-left-subtree roots of the represented leaves. With this,
-  P2.3 = ommer characterization, then `root_eq_spineFrom` +
-  `merkleRoot_eq_spineFrom` (both already proved).
+- **Ommer characterization / tight-level case** (blocks P2.3): the frontier's
+  ommers are the complete-left-subtree roots of the represented leaves. The
+  depth-padding half is now DONE: `NonEmptyFrontier.root_merkleRoot_lift` lifts
+  a match at any level `k` (with `L.length <= 2^k`) to every higher level, so
+  P2.3 reduces to the single tight-level obligation
+  `(ofList v0 vs).root k = merkleRoot k (v0 :: vs)` at the tight `k` (where
+  `2^k >= L.length`). `getLsbD_eq_false_of_lt` discharges the `hbits` side
+  condition for `ofList`. THIS tight-level equality is the one remaining hard
+  leaf for P2.3.
 - **Carry-popcount** (blocks P2.1 odd case): `carryRun a 0 ommers
   = trailingOnes a` (under the WF length bound) and `popcount (a+1)
   = popcount a + 1 - trailingOnes a` (with `a + 1 != 0`, the wraparound
