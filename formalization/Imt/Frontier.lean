@@ -18,6 +18,11 @@ namespace Imt
 def spineRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) : H :=
   (List.range depth).foldl (fun acc i => Hashable.combine i acc (emptyRoot i)) leaf
 
+/-- `spineRoot` is exactly the spine `spineFrom` starting at level 0. -/
+theorem spineRoot_eq_spineFrom {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
+    spineRoot leaf depth = spineFrom leaf 0 depth := by
+  simp only [spineRoot, spineFrom, Nat.zero_add]
+
 /-- Rust `NonEmptyFrontier`: the most recently appended `leaf` at `position`,
     plus the stored left siblings (`ommers`) needed to witness it, ordered from
     lowest level to highest.

@@ -171,6 +171,17 @@ theorem isRightChild_eq_getLsbD (a : Address) :
   simp only [isRightChild]
   bv_decide
 
+/-- Being a left child is the negation of bit 0 of the index. -/
+theorem isLeftChild_eq_not_getLsbD (a : Address) :
+    a.isLeftChild = !a.index.getLsbD 0 := by
+  simp only [isLeftChild]
+  bv_decide
+
+/-- An address has children exactly when it is above the leaf level. -/
+theorem children_isSome (a : Address) : a.children.isSome = true ↔ a.level ≠ 0 := by
+  unfold children
+  by_cases h : a.level = 0 <;> simp [h]
+
 end Address
 
 namespace Position
