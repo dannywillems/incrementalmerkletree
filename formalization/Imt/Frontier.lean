@@ -211,6 +211,25 @@ theorem carryRun_eq_zero_iff (p : BitVec 64) (level : Nat) (ommers : List H) :
     rw [carryRun]
     by_cases hb : p.getLsbD level = true <;> simp [hb]
 
+/-- The number of trailing one-bits of a 64-bit position: the run of set bits
+    from level 0, capped at the width. (Defined via `carryRun` on a full dummy
+    list, since `carryRun` reads only the position bits.) -/
+def trailingOnes (a : BitVec 64) : Nat := carryRun a 0 (List.replicate 64 (() : Unit))
+
+@[simp] theorem trailingOnes_zero : trailingOnes 0 = 0 := by
+  rw [trailingOnes, carryRun_eq_zero_iff]; right; decide
+
+/-- An even value has no trailing ones. -/
+theorem trailingOnes_of_even (a : BitVec 64) (h : a.getLsbD 0 = false) :
+    trailingOnes a = 0 := by
+  rw [trailingOnes, carryRun_eq_zero_iff]; right; exact h
+
+/-- Trailing ones never exceed the width. -/
+theorem trailingOnes_le (a : BitVec 64) : trailingOnes a ≤ 64 := by
+  rw [trailingOnes]
+  have := carryRun_le_length a 0 (List.replicate 64 (() : Unit))
+  simpa using this
+
 /-- `appendCarry` always produces a non-empty ommer list: it emits at least the
     carried value. -/
 theorem appendCarry_ne_nil [Hashable H] (p : BitVec 64) (level : Nat) (carry : H)
