@@ -101,6 +101,38 @@ theorem root_new [Hashable H] (leaf : H) (depth : Nat) :
   simp only [root, spineRoot, new]
   exact foldl_clear 0 (List.range depth) leaf [] (fun i _ => by simp)
 
+/-- The carry performed when appending to a frontier whose last leaf is a right
+    child: combine the carry digest with successive stored ommers while the old
+    position's bit is set, then place the carry at the first cleared level. -/
+def appendCarry [Hashable H] (p : BitVec 64) (level : Nat) (carry : H) :
+    List H → List H
+  | [] => [carry]
+  | o :: rest =>
+    if p.getLsbD level then
+      appendCarry p (level + 1) (Hashable.combine level o carry) rest
+    else
+      carry :: o :: rest
+
+/-- Rust `NonEmptyFrontier::append`: extend the frontier with leaf `v`. If the
+    old position is even (new position a right child) the old leaf becomes a
+    level-0 ommer; otherwise (old position odd) the old leaf is carried up,
+    combining with stored ommers until a cleared level is reached. -/
+def append [Hashable H] (f : NonEmptyFrontier H) (v : H) : NonEmptyFrontier H :=
+  if f.position.val.getLsbD 0 then
+    { position := ⟨f.position.val + 1⟩, leaf := v,
+      ommers := appendCarry f.position.val 0 f.leaf f.ommers }
+  else
+    { position := ⟨f.position.val + 1⟩, leaf := v,
+      ommers := f.leaf :: f.ommers }
+
+@[simp] theorem append_position [Hashable H] (f : NonEmptyFrontier H) (v : H) :
+    (f.append v).position = ⟨f.position.val + 1⟩ := by
+  unfold append; split <;> rfl
+
+@[simp] theorem append_leaf [Hashable H] (f : NonEmptyFrontier H) (v : H) :
+    (f.append v).leaf = v := by
+  unfold append; split <;> rfl
+
 end NonEmptyFrontier
 
 /-- Rust `Frontier<H, DEPTH>`: a possibly-empty frontier. The static depth bound
