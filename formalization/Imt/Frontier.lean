@@ -186,6 +186,28 @@ theorem carryRun_length_eq (p : BitVec 64) (level : Nat) (l₁ l₂ : List H)
       · simp only [hb, if_true]; rw [ih (level + 1) bs h]
       · simp [hb]
 
+/-- The carry consumes nothing exactly when there are no ommers or the current
+    bit is already clear. -/
+theorem carryRun_eq_zero_iff (p : BitVec 64) (level : Nat) (ommers : List H) :
+    carryRun p level ommers = 0 ↔ ommers = [] ∨ p.getLsbD level = false := by
+  cases ommers with
+  | nil => simp [carryRun]
+  | cons o rest =>
+    rw [carryRun]
+    by_cases hb : p.getLsbD level = true <;> simp [hb]
+
+/-- `appendCarry` always produces a non-empty ommer list: it emits at least the
+    carried value. -/
+theorem appendCarry_ne_nil [Hashable H] (p : BitVec 64) (level : Nat) (carry : H)
+    (ommers : List H) : appendCarry p level carry ommers ≠ [] := by
+  induction ommers generalizing level carry with
+  | nil => simp [appendCarry]
+  | cons o rest ih =>
+    rw [appendCarry]
+    by_cases hb : p.getLsbD level = true
+    · simp only [hb, if_true]; exact ih _ _
+    · simp [hb]
+
 /-- Rust `NonEmptyFrontier::append`: extend the frontier with leaf `v`. If the
     old position is even (new position a right child) the old leaf becomes a
     level-0 ommer; otherwise (old position odd) the old leaf is carried up,

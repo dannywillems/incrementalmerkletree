@@ -67,6 +67,11 @@ def merkleRoot [Hashable H] : Nat → List H → H
   | zero => rfl
   | succ d ih => simp [merkleRoot, ih]
 
+/-- At depth 1 a tree with at least two leaves combines the first two: the two
+    one-leaf halves are `a` and `b`. -/
+theorem merkleRoot_one [Hashable H] (a b : H) (rest : List H) :
+    merkleRoot 1 (a :: b :: rest) = Hashable.combine 0 a b := rfl
+
 /-- Wrap `digest` (the root of a complete subtree rooted at level `start`) with
     empty subtree roots at levels `start, start+1, ..., start+count-1`. This is
     the spine a frontier climbs once its complete left part is reduced to a
@@ -94,6 +99,10 @@ theorem spineFrom_succ [Hashable H] (digest : H) (start n : Nat) :
     spineFrom digest start (n + 1)
       = Hashable.combine (start + n) (spineFrom digest start n) (emptyRoot (start + n)) := by
   simp only [spineFrom, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
+
+/-- A spine of zero levels is the digest itself. -/
+@[simp] theorem spineFrom_zero [Hashable H] (digest : H) (start : Nat) :
+    spineFrom digest start 0 = digest := by simp [spineFrom]
 
 /-- A path from a leaf to a root (Rust `MerklePath<H, DEPTH>`). The length
     invariant (`pathElems.length = depth`) is enforced by `fromParts`. -/
