@@ -278,6 +278,23 @@ def root [Hashable H] (f : Frontier H depth) : H :=
 @[simp] theorem singleton_root [Hashable H] (leaf : H) :
     (singleton leaf : Frontier H depth).root = (NonEmptyFrontier.new leaf).root depth := rfl
 
+/-- Rust `Frontier::append`: append `v`, returning `true` on success. Fails
+    (returns `false` and the unchanged frontier) when the tree is already a
+    complete subtree at `depth`, i.e. full. -/
+def append [Hashable H] (v : H) (f : Frontier H depth) : Bool × Frontier H depth :=
+  match f.value with
+  | none => (true, ⟨some (NonEmptyFrontier.new v)⟩)
+  | some nf =>
+    if nf.position.isCompleteSubtree (BitVec.ofNat 8 depth) then
+      (false, f)
+    else
+      (true, ⟨some (nf.append v)⟩)
+
+/-- Appending to the empty frontier always succeeds and yields the single-leaf
+    frontier. -/
+@[simp] theorem append_empty [Hashable H] (v : H) :
+    append v (empty : Frontier H depth) = (true, singleton v) := rfl
+
 end Frontier
 
 end Imt
