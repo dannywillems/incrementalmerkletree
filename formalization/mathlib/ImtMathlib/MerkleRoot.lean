@@ -30,6 +30,10 @@ theorem merkleRoot_take_congr [Hashable H] (d : Nat) (l₁ l₂ : List H)
     (h : l₁.take (2 ^ d) = l₂.take (2 ^ d)) : merkleRoot d l₁ = merkleRoot d l₂ := by
   rw [merkleRoot_take d l₁, merkleRoot_take d l₂, h]
 
+/-- Truncating to the first `2^d` leaves leaves the depth-`d` root unchanged. -/
+theorem merkleRoot_take_self [Hashable H] (d : Nat) (l : List H) :
+    merkleRoot d (l.take (2 ^ d)) = merkleRoot d l := (merkleRoot_take d l).symm
+
 /-- A leaf list of all `emptyLeaf` (any length) hashes to the empty root. -/
 theorem merkleRoot_replicate [Hashable H] (d n : Nat) :
     merkleRoot d (List.replicate n (Hashable.emptyLeaf : H)) = emptyRoot d := by

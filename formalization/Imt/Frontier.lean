@@ -122,6 +122,10 @@ theorem foldl_clear [Hashable H] (pos : BitVec 64) :
     · exact ih (Hashable.combine x a (emptyRoot x)) oms
         (fun i hi => h i (List.mem_cons_of_mem _ hi))
 
+/-- The root at depth 0 is just the current leaf (the empty fold). -/
+@[simp] theorem root_zero [Hashable H] (f : NonEmptyFrontier H) : f.root 0 = f.leaf := by
+  simp [root]
+
 /-- The root of a freshly constructed frontier is the left spine of its leaf:
     with no ommers and position 0, every level pairs the digest with an empty
     subtree on the right. -/

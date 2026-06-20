@@ -150,6 +150,15 @@ theorem isRightChild_eq_not_isLeftChild (a : Address) :
 theorem abovePosition_index (l : Level) (p : Position) :
     (abovePosition l p).index = p.val >>> l.toNat := rfl
 
+/-- `above_position` lands at the requested level. -/
+@[simp] theorem abovePosition_level (l : Level) (p : Position) :
+    (abovePosition l p).level = l := rfl
+
+/-- At level 0 `above_position` is the leaf address itself (index = position). -/
+@[simp] theorem abovePosition_zero_index (p : Position) :
+    (abovePosition 0 p).index = p.val := by
+  simp [abovePosition]
+
 /-- `parent` shifts the index right by one. -/
 theorem parent_index (a : Address) : a.parent.index = a.index >>> (1 : Nat) := rfl
 
