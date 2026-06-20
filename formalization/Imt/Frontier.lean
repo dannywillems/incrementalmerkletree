@@ -407,6 +407,16 @@ def append [Hashable H] (v : H) (f : Frontier H depth) : Bool × Frontier H dept
 @[simp] theorem append_empty [Hashable H] (v : H) :
     append v (empty : Frontier H depth) = (true, singleton v) := rfl
 
+/-- `Frontier.append` always yields a non-empty frontier (even when it reports
+    failure it returns the unchanged, already non-empty, full frontier). -/
+theorem append_value_isSome [Hashable H] (v : H) (f : Frontier H depth) :
+    (append v f).2.value.isSome = true := by
+  cases hv : f.value with
+  | none => simp [append, hv]
+  | some nf =>
+    simp only [append, hv]
+    by_cases h : nf.position.isCompleteSubtree (BitVec.ofNat 8 depth) <;> simp [h, hv]
+
 end Frontier
 
 end Imt

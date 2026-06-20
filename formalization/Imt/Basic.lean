@@ -49,6 +49,15 @@ theorem popcount_succ_of_even (p : BitVec 64) (h : p.getLsbD 0 = false) :
   simp only [List.countP_cons, List.countP_map, hfun, h0, h]
   simp
 
+/-- An all-ones `w`-bit vector has population count `w` (every bit set). -/
+theorem popcount_allOnes (w : Nat) : popcount (BitVec.allOnes w) = w := by
+  unfold popcount
+  rw [List.countP_eq_length.mpr]
+  · exact List.length_range
+  · intro i hi
+    simp only [List.mem_range] at hi
+    simp [hi]
+
 namespace Address
 
 /-- Rust `Address::parent`: `(level + 1, index >> 1)`. -/
