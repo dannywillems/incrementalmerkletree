@@ -239,6 +239,47 @@ theorem rootState_fst_succ_set {H : Type} [Hashable H] (f : NonEmptyFrontier H)
   simp only [hset, if_true, hommers]
   rw [merkleRoot_succ, List.drop_drop, baseIndex_add_pow (L.length - 1) j hbit, ← hIH, ← ho]
 
+/-- The ommers feeding the carry, as `merkleRoot`s of complete subtree blocks at
+    increasing levels. Used by: the carry-merge value `mergedCarry_blockOmmers`. -/
+def blockOmmers {H : Type} [Hashable H] (level : Nat) : List (List H) → List H
+  | [] => []
+  | b :: bs => merkleRoot level b :: blockOmmers (level + 1) bs
+
+/-- Carry-merge value (the crux of (A)): when the carried `cL` and every ommer
+    block are complete subtrees (`|block i| = 2^(level+i)`) and every bit in the
+    run is set, the merged carry is the `merkleRoot` of the concatenated blocks
+    (left to right) followed by the carried leaves. Used by: the (A) ommer-value
+    characterization's odd/carry case. -/
+theorem mergedCarry_blockOmmers {H : Type} [Hashable H] (p : BitVec 64) :
+    ∀ (blocks : List (List H)) (level : Nat) (cL : List H),
+      cL.length = 2 ^ level →
+      (∀ i (_ : i < blocks.length), (blocks[i]).length = 2 ^ (level + i)) →
+      (∀ i (_ : i < blocks.length), p.getLsbD (level + i) = true) →
+      mergedCarry p level (merkleRoot level cL) (blockOmmers level blocks)
+        = merkleRoot (level + blocks.length) (blocks.reverse.flatten ++ cL) := by
+  intro blocks
+  induction blocks with
+  | nil => intro level cL _ _ _; simp [mergedCarry, blockOmmers]
+  | cons b bs ih =>
+    intro level cL hc hlen hbit
+    have hb0 : p.getLsbD level = true := by simpa using hbit 0 (by simp)
+    have hblen : b.length = 2 ^ level := by
+      have := hlen 0 (by simp); simpa using this
+    rw [blockOmmers, mergedCarry, if_pos hb0, combine_merkleRoot level b cL hblen,
+      ih (level + 1) (b ++ cL) (by rw [List.length_append, hblen, hc]; ring)
+        (fun i _ => by
+          have := hlen (i + 1) (by rw [List.length_cons]; omega)
+          simp only [List.getElem_cons_succ] at this
+          rw [show level + 1 + i = level + (i + 1) from by omega]; exact this)
+        (fun i _ => by
+          have := hbit (i + 1) (by rw [List.length_cons]; omega)
+          rw [show level + 1 + i = level + (i + 1) from by omega]; exact this)]
+    rw [List.reverse_cons, List.flatten_append]
+    simp only [List.flatten_cons, List.flatten_nil, List.append_nil, List.append_assoc]
+    have hdepth : level + 1 + bs.length = level + (b :: bs).length := by
+      rw [List.length_cons]; omega
+    rw [hdepth]
+
 end NonEmptyFrontier
 
 end Imt
