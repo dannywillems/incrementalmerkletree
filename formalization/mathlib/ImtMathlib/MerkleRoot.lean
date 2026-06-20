@@ -32,4 +32,27 @@ theorem merkleRoot_append_of_full [Hashable H] (d : Nat) (leaves extra : List H)
   rw [merkleRoot_take d (leaves ++ extra), merkleRoot_take d leaves,
     List.take_append_of_le_length h]
 
+/-- The spine recurrence: one more level wraps the spine in a combine with the
+    empty subtree root on the right. -/
+theorem spineFrom_succ [Hashable H] (digest : H) (start n : Nat) :
+    spineFrom digest start (n + 1)
+      = Hashable.combine (start + n) (spineFrom digest start n) (emptyRoot (start + n)) := by
+  simp only [spineFrom, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
+
+/-- Spine-extension of `merkleRoot`: when the leaves fit in a complete subtree at
+    level `k`, the full depth-`(k+n)` root is the level-`k` root wrapped in a
+    spine of empty subtree roots over the `n` higher levels. This is the
+    "climb to the top with empty siblings" half of the frontier root theorem. -/
+theorem merkleRoot_eq_spineFrom [Hashable H] (k : Nat) (leaves : List H)
+    (hlen : leaves.length ≤ 2 ^ k) (n : Nat) :
+    merkleRoot (k + n) leaves = spineFrom (merkleRoot k leaves) k n := by
+  induction n with
+  | zero => simp [spineFrom]
+  | succ n ih =>
+    have hle : leaves.length ≤ 2 ^ (k + n) :=
+      le_trans hlen (Nat.pow_le_pow_right (by norm_num) (Nat.le_add_right k n))
+    rw [show k + (n + 1) = (k + n) + 1 from by omega, merkleRoot,
+      List.take_of_length_le hle, List.drop_eq_nil_of_le hle, merkleRoot_nil, ih,
+      spineFrom_succ]
+
 end Imt
