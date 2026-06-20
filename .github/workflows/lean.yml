@@ -7,10 +7,16 @@
 #   * mathlib - the Mathlib-dependent package in `formalization/mathlib/`. Pinned
 #               to the exact toolchain Mathlib requires (it cannot use the
 #               channel matrix), built with the prebuilt Mathlib cache.
+#
+# Third-party actions are pinned to a commit SHA (tags are mutable); the trailing
+# comment records the human-readable version.
 
 name: Lean formalization
 
 on: [push, pull_request]
+
+permissions:
+  contents: read
 
 jobs:
   core:
@@ -21,7 +27,9 @@ jobs:
       matrix:
         toolchain: [stable, beta]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Install elan
         run: |
@@ -40,7 +48,9 @@ jobs:
     name: mathlib track
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Install elan
         run: |
@@ -49,7 +59,7 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Cache Mathlib oleans
-        uses: actions/cache@v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/mathlib
           key: mathlib-${{ hashFiles('formalization/mathlib/lake-manifest.json') }}
