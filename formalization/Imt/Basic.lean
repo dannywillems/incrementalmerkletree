@@ -136,6 +136,16 @@ theorem sibling_isRightChild (a : Address) :
 
 end Address
 
+namespace Position
+
+/-- P0.5: a position has a complete subtree rooted at `l` iff all the bits below
+    level `l` are set. -/
+theorem isCompleteSubtree_iff (p : Position) (l : Level) :
+    p.isCompleteSubtree l = true ↔ ∀ i, i < l.toNat → p.val.getLsbD i = true := by
+  simp [isCompleteSubtree, List.all_eq_true, List.mem_range]
+
+end Position
+
 /-! ## Oracle checks (mirror the Rust unit tests)
 
 These ground facts are proved by `decide` over the computable model. They are
