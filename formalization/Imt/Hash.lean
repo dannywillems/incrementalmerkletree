@@ -104,6 +104,16 @@ theorem spineFrom_succ [Hashable H] (digest : H) (start n : Nat) :
 @[simp] theorem spineFrom_zero [Hashable H] (digest : H) (start : Nat) :
     spineFrom digest start 0 = digest := by simp [spineFrom]
 
+/-- Spines compose: stacking `m` then `n` levels is the same as stacking `m + n`,
+    with the second stack starting `m` levels higher. -/
+theorem spineFrom_add [Hashable H] (digest : H) (start m n : Nat) :
+    spineFrom digest start (m + n) = spineFrom (spineFrom digest start m) (start + m) n := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [show m + (n + 1) = (m + n) + 1 from by omega, spineFrom_succ, ih, spineFrom_succ]
+    simp only [Nat.add_assoc]
+
 /-- A path from a leaf to a root (Rust `MerklePath<H, DEPTH>`). The length
     invariant (`pathElems.length = depth`) is enforced by `fromParts`. -/
 structure MerklePath (H : Type) (depth : Nat) where

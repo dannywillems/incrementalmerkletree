@@ -24,6 +24,12 @@ theorem merkleRoot_take [Hashable H] (d : Nat) (leaves : List H) :
     rw [ih (leaves.drop (2 ^ d)), ih ((leaves.take (2 ^ (d + 1))).drop (2 ^ d))]
     simp only [List.drop_take, List.take_take, hsub, Nat.min_self]
 
+/-- `merkleRoot` depends only on the first `2^d` leaves: lists agreeing on that
+    prefix have the same depth-`d` root. -/
+theorem merkleRoot_take_congr [Hashable H] (d : Nat) (l₁ l₂ : List H)
+    (h : l₁.take (2 ^ d) = l₂.take (2 ^ d)) : merkleRoot d l₁ = merkleRoot d l₂ := by
+  rw [merkleRoot_take d l₁, merkleRoot_take d l₂, h]
+
 /-- Once the first `2^d` leaves are present, appending more does not change the
     depth-`d` root. The frontier-padding corollary of `merkleRoot_take`. -/
 theorem merkleRoot_append_of_full [Hashable H] (d : Nat) (leaves extra : List H)

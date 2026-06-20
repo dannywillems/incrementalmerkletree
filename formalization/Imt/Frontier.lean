@@ -360,6 +360,18 @@ def root [Hashable H] (f : Frontier H depth) : H :=
 @[simp] theorem singleton_root [Hashable H] (leaf : H) :
     (singleton leaf : Frontier H depth).root = (NonEmptyFrontier.new leaf).root depth := rfl
 
+/-- Rust `Frontier::tree_size`: the number of leaves represented (0 when empty,
+    else position + 1). -/
+def tree_size (f : Frontier H depth) : Nat :=
+  match f.value with
+  | none => 0
+  | some nf => nf.position.val.toNat + 1
+
+@[simp] theorem empty_tree_size : (empty : Frontier H depth).tree_size = 0 := rfl
+
+@[simp] theorem singleton_tree_size [Hashable H] (v : H) :
+    (singleton v : Frontier H depth).tree_size = 1 := rfl
+
 /-- Rust `Frontier::append`: append `v`, returning `true` on success. Fails
     (returns `false` and the unchanged frontier) when the tree is already a
     complete subtree at `depth`, i.e. full. -/
