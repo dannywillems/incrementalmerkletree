@@ -66,4 +66,20 @@ theorem merkleRoot_eq_spineFrom [Hashable H] (k : Nat) (leaves : List H)
       List.take_of_length_le hle, List.drop_eq_nil_of_le hle, merkleRoot_nil, ih,
       spineFrom_succ]
 
+/-- One level of the `merkleRoot` recursion: split the leaves at the half-width.
+    Used by: the set-bit step of the P2.3 ommer characterization (the current
+    subtree splits into the complete left sibling and the lower subtree). -/
+theorem merkleRoot_succ [Hashable H] (j : Nat) (M : List H) :
+    merkleRoot (j + 1) M
+      = Hashable.combine j (merkleRoot j (M.take (2 ^ j))) (merkleRoot j (M.drop (2 ^ j))) := by
+  rw [merkleRoot]
+
+/-- Clear-bit step of the `merkleRoot` recursion: a subtree that fits in the left
+    half wraps with an empty right sibling. Used by: the clear-bit step of the
+    P2.3 ommer characterization. -/
+theorem merkleRoot_succ_of_le [Hashable H] (j : Nat) (M : List H)
+    (h : M.length ≤ 2 ^ j) :
+    merkleRoot (j + 1) M = Hashable.combine j (merkleRoot j M) (emptyRoot j) := by
+  rw [merkleRoot, List.take_of_length_le h, List.drop_eq_nil_of_le h, merkleRoot_nil]
+
 end Imt

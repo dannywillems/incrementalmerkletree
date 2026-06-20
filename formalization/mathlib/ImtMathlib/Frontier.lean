@@ -75,6 +75,17 @@ theorem length_drop_baseIndex_le {H : Type} (L : List H) (j : Nat) (hL : 1 ≤ L
   have := Nat.mod_lt (L.length - 1) (Nat.pos_of_ne_zero (by positivity) : 0 < 2 ^ j)
   omega
 
+/-- When bit `j` is set, going up a level pulls in the complete left sibling: the
+    level-`(j+1)` subtree starts `2^j` earlier than the level-`j` subtree. Used
+    by: the set-bit step of the ommer characterization (it rewrites the merkleRoot
+    split offsets onto the base indices). -/
+theorem baseIndex_add_pow (m j : Nat) (h : m / 2 ^ j % 2 = 1) :
+    baseIndex m (j + 1) + 2 ^ j = baseIndex m j := by
+  unfold baseIndex
+  have hmod : m % 2 ^ (j + 1) = m % 2 ^ j + 2 ^ j := by rw [mod_two_pow_succ, h, mul_one]
+  have hle : m % 2 ^ (j + 1) ≤ m := Nat.mod_le _ _
+  omega
+
 /-- The left spine of a single leaf is exactly the reference Merkle root of the
     one-element leaf list. -/
 theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
