@@ -289,6 +289,23 @@ theorem mergedCarry_blockOmmers {H : Type} [Hashable H] (p : BitVec 64) :
       rw [List.length_cons]; omega
     rw [hdepth]
 
+/-- The expected ommer list of a frontier over leaves `L` at position `p`, read
+    from level `j` upward over `fuel` levels: one ommer per set bit `i` of `p`,
+    namely the level-`i` complete left-sibling subtree root. The full ommer list
+    is `expOmmers L (n-1) 0 64`. Used by: the (A) ommer-value characterization. -/
+def expOmmers {H : Type} [Hashable H] (L : List H) (p : Nat) (j : Nat) : Nat → List H
+  | 0 => []
+  | fuel + 1 =>
+    (if p.testBit j then [merkleRoot j ((L.drop (baseIndex p (j + 1))).take (2 ^ j))] else [])
+      ++ expOmmers L p (j + 1) fuel
+
+/-- At position 0 there are no ommers. Used by: the base case of (A). -/
+theorem expOmmers_zero {H : Type} [Hashable H] (L : List H) (j fuel : Nat) :
+    expOmmers L 0 j fuel = [] := by
+  induction fuel generalizing j with
+  | zero => rfl
+  | succ fuel ih => rw [expOmmers]; simp [Nat.zero_testBit, ih]
+
 end NonEmptyFrontier
 
 end Imt
