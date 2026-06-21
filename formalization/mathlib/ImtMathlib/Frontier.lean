@@ -239,6 +239,15 @@ theorem rootState_fst_succ_set {H : Type} [Hashable H] (f : NonEmptyFrontier H)
   simp only [hset, if_true, hommers]
   rw [merkleRoot_succ, List.drop_drop, baseIndex_add_pow (L.length - 1) j hbit, ← hIH, ← ho]
 
+/-- An interior subtree slice is unchanged by appending one leaf at the end. Used
+    by: the even-append case of the (A) ommer-value characterization (the higher
+    ommers' left-sibling slices are stable when a new leaf is appended). -/
+theorem take_drop_append_singleton {H : Type} (L : List H) (w : H) (a n : Nat)
+    (h : a + n ≤ L.length) :
+    ((L ++ [w]).drop a).take n = (L.drop a).take n := by
+  rw [List.drop_append_of_le_length (by omega),
+    List.take_append_of_le_length (by rw [List.length_drop]; omega)]
+
 /-- The ommers feeding the carry, as `merkleRoot`s of complete subtree blocks at
     increasing levels. Used by: the carry-merge value `mergedCarry_blockOmmers`. -/
 def blockOmmers {H : Type} [Hashable H] (level : Nat) : List (List H) → List H
