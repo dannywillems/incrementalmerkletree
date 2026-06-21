@@ -116,6 +116,12 @@ theorem testBit_succ_of_even (p i : Nat) (hp : p % 2 = 0) :
     (p + 1).testBit (i + 1) = p.testBit (i + 1) := by
   rw [Nat.testBit_succ, Nat.testBit_succ]; congr 1; omega
 
+/-- A bit is set iff the corresponding `div/mod` value is 1. Used by: deriving the
+    set-bit `baseIndex_add_pow` precondition in (A). -/
+theorem testBit_iff_div_mod (n k : Nat) : n.testBit k = true ↔ n / 2 ^ k % 2 = 1 := by
+  rw [Nat.testBit, Nat.shiftRight_eq_div_pow, Nat.and_comm, Nat.and_one_is_mod]
+  rcases Nat.mod_two_eq_zero_or_one (n / 2 ^ k) with h | h <;> simp [h]
+
 /-- The left spine of a single leaf is exactly the reference Merkle root of the
     one-element leaf list. -/
 theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
@@ -335,6 +341,31 @@ theorem expOmmers_zero {H : Type} [Hashable H] (L : List H) (j fuel : Nat) :
   induction fuel generalizing j with
   | zero => rfl
   | succ fuel ih => rw [expOmmers]; simp [Nat.zero_testBit, ih]
+
+/-- An even append leaves the higher-level (`>= 1`) expected ommers unchanged:
+    above bit 0 the position bits and the complete left-sibling slices are stable
+    (`testBit_succ_of_even`, `baseIndex_succ_of_even`, `take_drop_append_singleton`).
+    Used by: the even-append case of the (A) ommer-value characterization. -/
+theorem expOmmers_succ_even {H : Type} [Hashable H] (L : List H) (w : H) (p : Nat)
+    (hp : p % 2 = 0) (hpL : p < L.length) :
+    ∀ (fuel j : Nat), 1 ≤ j →
+      expOmmers (L ++ [w]) (p + 1) j fuel = expOmmers L p j fuel := by
+  intro fuel
+  induction fuel with
+  | zero => intro j _; rfl
+  | succ fuel ih =>
+    intro j hj
+    obtain ⟨j0, rfl⟩ : ∃ j0, j = j0 + 1 := ⟨j - 1, by omega⟩
+    rw [expOmmers, expOmmers, testBit_succ_of_even p j0 hp,
+      baseIndex_succ_of_even p (j0 + 1) hp]
+    by_cases hbit : p.testBit (j0 + 1)
+    · have hset : p / 2 ^ (j0 + 1) % 2 = 1 := (testBit_iff_div_mod p (j0 + 1)).mp hbit
+      have hrange : baseIndex p (j0 + 1 + 1) + 2 ^ (j0 + 1) ≤ L.length := by
+        rw [baseIndex_add_pow p (j0 + 1) hset]
+        have := baseIndex_le p (j0 + 1); omega
+      simp only [hbit, if_true]
+      rw [take_drop_append_singleton L w _ _ hrange, ih (j0 + 1 + 1) (by omega)]
+    · rw [if_neg hbit, if_neg hbit, ih (j0 + 1 + 1) (by omega)]
 
 end NonEmptyFrontier
 
