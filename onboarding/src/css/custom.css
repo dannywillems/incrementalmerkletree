@@ -1,0 +1,56 @@
+/* Minimal theme overrides for the incrementalmerkletree onboarding course. */
+
+:root {
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-code-font-size: 95%;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+}
+
+/*
+ * Sticky disclaimer.
+ *
+ * Docusaurus does not pin the announcement bar to the viewport; it scrolls
+ * out of view within the first screen, which defeats the purpose of an
+ * "errors may have been introduced" warning. Pin it to the top, shift the
+ * navbar down by the bar height, and adjust scroll-padding so that in-page
+ * anchor jumps do not hide content behind the pinned bar.
+ */
+div[class^='announcementBar_'] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: calc(var(--ifm-z-index-fixed) + 1);
+  height: var(--docusaurus-announcement-bar-height, 40px);
+  font-weight: 600;
+}
+
+.navbar {
+  top: var(--docusaurus-announcement-bar-height, 40px);
+}
+
+html {
+  scroll-padding-top: calc(
+    var(--ifm-navbar-height) + var(--docusaurus-announcement-bar-height, 40px)
+  );
+}
+
+/* Push the whole page body down so the fixed bar never overlaps content. */
+#__docusaurus {
+  padding-top: var(--docusaurus-announcement-bar-height, 40px);
+}

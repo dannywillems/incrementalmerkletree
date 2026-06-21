@@ -1,0 +1,45 @@
+{
+  "name": "incrementalmerkletree-onboarding",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Code-anchored onboarding course for the zcash/incrementalmerkletree workspace",
+  "dependencies": {
+    "@docusaurus/core": "^3.10.0",
+    "@docusaurus/preset-classic": "^3.10.0",
+    "@easyops-cn/docusaurus-search-local": "^0.52.0",
+    "clsx": "^2.1.1",
+    "docusaurus-theme-github-codeblock": "^2.0.2",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "^3.10.0",
+    "@docusaurus/tsconfig": "^3.10.0",
+    "@docusaurus/types": "^3.10.0",
+    "typescript": "^5.6.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.3",
+    "uuid": "^11.1.1"
+  },
+  "engines": {
+    "node": ">=20.0"
+  },
+  "browserslist": {
+    "production": [
+      "chrome >= 64",
+      "edge >= 79",
+      "firefox >= 78",
+      "safari >= 12",
+      "not dead"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  }
+}

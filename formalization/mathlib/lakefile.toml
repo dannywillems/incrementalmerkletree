@@ -1,0 +1,22 @@
+# Mathlib track of the formalization (PLAN.md, milestone M2+).
+#
+# This package depends on Mathlib and therefore pins the exact Lean toolchain
+# Mathlib was built for (v4.31.0, matching Mathlib tag v4.31.0). It also depends
+# on the core (Mathlib-free) `imt` package one directory up, so it can build on
+# the Layer 0 / Layer 1 definitions. The core package stays Mathlib-free and is
+# checked separately on the stable+beta channels.
+
+name = "imt-mathlib"
+defaultTargets = ["ImtMathlib"]
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4.git"
+rev = "v4.31.0"
+
+[[require]]
+name = "imt"
+path = ".."
+
+[[lean_lib]]
+name = "ImtMathlib"

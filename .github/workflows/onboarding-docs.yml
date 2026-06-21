@@ -1,0 +1,75 @@
+# Builds the onboarding Docusaurus course and deploys it to GitHub Pages.
+#
+# ONE-TIME MANUAL SETUP (required, the workflow cannot do this for you):
+#   Repo Settings -> Pages -> Source -> "GitHub Actions".
+#   The legacy "Deploy from a branch" option is incompatible with this
+#   workflow; if it is selected, GitHub's automatic "pages build and
+#   deployment" job runs in parallel and conflicts. Turn it off.
+#
+# This workflow NEVER commits anything back to the branch. The rendered
+# site is uploaded as a Pages artefact and deployed via actions/deploy-pages.
+# The `onboarding` branch carries only Markdown source, never built HTML.
+#
+# Third-party actions are pinned to a commit SHA (tags are mutable); the
+# trailing comment records the human-readable version for future bumps.
+
+name: Onboarding docs
+
+on:
+  push:
+    branches: [onboarding]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages-onboarding-docs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: onboarding/package-lock.json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: onboarding
+
+      - name: Build site
+        run: npx docusaurus build
+        working-directory: onboarding
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: onboarding/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
