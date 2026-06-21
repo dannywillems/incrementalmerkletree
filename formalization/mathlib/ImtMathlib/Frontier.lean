@@ -86,6 +86,36 @@ theorem baseIndex_add_pow (m j : Nat) (h : m / 2 ^ j % 2 = 1) :
   have hle : m % 2 ^ (j + 1) ≤ m := Nat.mod_le _ _
   omega
 
+/-- Incrementing an even number bumps the `2^(i+1)`-modulus by exactly one (no
+    carry past bit 0). Used by: the even-append case of (A). -/
+theorem mod_two_pow_succ_of_even (p i : Nat) (hp : p % 2 = 0) :
+    (p + 1) % 2 ^ (i + 1) = p % 2 ^ (i + 1) + 1 := by
+  have hm : 2 ∣ 2 ^ (i + 1) := dvd_pow_self 2 (Nat.succ_ne_zero i)
+  have hpar : p % 2 ^ (i + 1) % 2 = 0 := by rw [Nat.mod_mod_of_dvd p hm]; exact hp
+  have hlt : p % 2 ^ (i + 1) < 2 ^ (i + 1) := Nat.mod_lt _ (by positivity)
+  have hMeven : 2 ^ (i + 1) % 2 = 0 := by rw [pow_succ]; omega
+  have hpow2 : 2 ≤ 2 ^ (i + 1) := by
+    rw [pow_succ]; have := Nat.one_le_two_pow (n := i); omega
+  have hsum : p % 2 ^ (i + 1) + 1 < 2 ^ (i + 1) := by omega
+  rw [Nat.add_mod, Nat.mod_eq_of_lt (by omega : (1 : Nat) < 2 ^ (i + 1)),
+    Nat.mod_eq_of_lt hsum]
+
+/-- The subtree start at level `i+1` is unchanged by an even increment. Used by:
+    the even-append case of (A) (the higher-level left-sibling slices match). -/
+theorem baseIndex_succ_of_even (p i : Nat) (hp : p % 2 = 0) :
+    baseIndex (p + 1) (i + 1) = baseIndex p (i + 1) := by
+  unfold baseIndex
+  rw [mod_two_pow_succ_of_even p i hp]
+  have hlt : p % 2 ^ (i + 1) < 2 ^ (i + 1) := Nat.mod_lt _ (by positivity)
+  have h1 : p % 2 ^ (i + 1) ≤ p := Nat.mod_le _ _
+  omega
+
+/-- An even increment leaves every bit above bit 0 unchanged. Used by: the
+    even-append case of (A) (the higher set bits match). -/
+theorem testBit_succ_of_even (p i : Nat) (hp : p % 2 = 0) :
+    (p + 1).testBit (i + 1) = p.testBit (i + 1) := by
+  rw [Nat.testBit_succ, Nat.testBit_succ]; congr 1; omega
+
 /-- The left spine of a single leaf is exactly the reference Merkle root of the
     one-element leaf list. -/
 theorem spineRoot_eq_merkleRoot {H : Type} [Hashable H] (leaf : H) (depth : Nat) :
