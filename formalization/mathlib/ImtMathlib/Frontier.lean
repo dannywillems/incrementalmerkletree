@@ -367,6 +367,29 @@ theorem expOmmers_succ_even {H : Type} [Hashable H] (L : List H) (w : H) (p : Na
       rw [take_drop_append_singleton L w _ _ hrange, ih (j0 + 1 + 1) (by omega)]
     · rw [if_neg hbit, if_neg hbit, ih (j0 + 1 + 1) (by omega)]
 
+/-- Even-append recurrence for the expected ommers: appending a leaf at an even
+    position prepends one new level-0 ommer (the old last leaf, as a singleton
+    subtree) and leaves the higher ommers unchanged. The (A) even case. -/
+theorem expOmmers_snoc_even {H : Type} [Hashable H] (L : List H) (w : H) (fuel : Nat)
+    (hL : 1 ≤ L.length) (h2 : (L.length - 1) % 2 = 0) :
+    expOmmers (L ++ [w]) L.length 0 (fuel + 1)
+      = merkleRoot 0 ((L ++ [w]).drop (L.length - 1) |>.take 1)
+        :: expOmmers L (L.length - 1) 0 (fuel + 1) := by
+  have heq : (L.length - 1) + 1 = L.length := by omega
+  have hn_odd : L.length % 2 = 1 := by omega
+  have ht0 : (L.length).testBit 0 = true := by rw [testBit_iff_div_mod]; simpa using hn_odd
+  have ht0' : (L.length - 1).testBit 0 = false := by
+    by_contra hc
+    rw [Bool.not_eq_false] at hc
+    rw [testBit_iff_div_mod] at hc; simp at hc; omega
+  have hb : baseIndex L.length 1 = L.length - 1 := by
+    unfold baseIndex; rw [pow_one]; omega
+  rw [expOmmers, ht0, hb]
+  conv_rhs => rw [expOmmers, ht0']
+  simp only [if_true, Bool.false_eq_true, if_false, List.nil_append, pow_zero, Nat.zero_add]
+  rw [← heq, expOmmers_succ_even L w (L.length - 1) h2 (by omega) fuel 1 (by omega), heq,
+    List.singleton_append]
+
 end NonEmptyFrontier
 
 end Imt
